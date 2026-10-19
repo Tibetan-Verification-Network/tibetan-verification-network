@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-lint:
+    name: Backend lint and types
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.28"
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install
+        working-directory: backend
+        run: uv sync --frozen --all-groups
+      - name: Lint and typecheck
+        working-directory: backend
+        run: uv run ruff check . && uv run ruff format --check . && uv run mypy
+
+  backend-test:
+    name: Backend migrations and tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: tvn
+          POSTGRES_PASSWORD: tvn_local_dev
+          POSTGRES_DB: tvn
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tvn -d tvn"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+          --health-start-period 5s
+    env:
+      TVN_ENV_FILE: ""
+      ENVIRONMENT: test
+      LOG_LEVEL: warning
+      DATABASE_URL: postgresql://tvn:tvn_local_dev@127.0.0.1:5432/tvn
+      CORS_ORIGINS: http://127.0.0.1:5173,http://localhost:5173
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.28"
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install
+        working-directory: backend
+        run: uv sync --frozen --all-groups
+      - name: Migrate empty database
+        working-directory: backend
+        run: uv run alembic upgrade head
+      - name: Test
+        working-directory: backend
+        run: uv run pytest
+
+  frontend-check:
+    name: Frontend lint, types, and tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        working-directory: frontend
+        run: npm ci
+      - name: Lint, types, format, and test
+        working-directory: frontend
+        run: npm run lint && npm run typecheck && npm run format:check && npm test
+
+  frontend-build:
+    name: Frontend production build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        working-directory: frontend
+        run: npm ci
+      - name: Build
+        working-directory: frontend
+        run: npm run build && node scripts/verify-dist.mjs

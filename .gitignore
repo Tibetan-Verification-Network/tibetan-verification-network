@@ -1,0 +1,25 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+.python-version.local
+
+# Node
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# OS and editors
+.DS_Store
