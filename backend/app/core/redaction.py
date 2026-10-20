@@ -5,7 +5,8 @@ import re
 _URL_USERINFO = re.compile(r"(?i)(postgres(?:ql)?(?:\+asyncpg)?://)([^@\s]+)@")
 _BEARER = re.compile(r"(?i)\bBearer\s+\S+")
 _SENSITIVE_KEY = re.compile(
-    r"(?i)(password|secret|token|authorization|cookie|api[-_]?key|database_url|dsn|credential)"
+    r"(?i)(password|secret|token|authorization|cookie|api[-_]?key|database_url|dsn|credential|"
+    r"contact_email|contact_phone|contact_name|email|phone)"
 )
 
 

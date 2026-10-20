@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,6 +16,8 @@ from app.db.mixins import TimestampMixin, UserAuditMixin, UUIDPrimaryKeyMixin
 from app.db.types import pg_enum
 
 if TYPE_CHECKING:
+    from app.models.archive import ArchiveDocument
+    from app.models.assignments import InvestigationAssignment
     from app.models.intake import Claim
     from app.models.publication import FactCheck
 
@@ -58,6 +60,15 @@ class Investigation(UUIDPrimaryKeyMixin, TimestampMixin, UserAuditMixin, Base):
         back_populates="investigation",
         uselist=False,
     )
+    assignments: Mapped[list[InvestigationAssignment]] = relationship(
+        "InvestigationAssignment",
+        back_populates="investigation",
+        cascade="all, delete-orphan",
+    )
+    archive_documents: Mapped[list[ArchiveDocument]] = relationship(
+        "ArchiveDocument",
+        back_populates="investigation",
+    )
 
     __table_args__ = (
         Index("ix_investigations_workflow_status", "workflow_status"),
@@ -79,6 +90,11 @@ class Source(UUIDPrimaryKeyMixin, TimestampMixin, UserAuditMixin, Base):
     publisher: Mapped[str | None] = mapped_column(String(300))
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     retrieved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    author: Mapped[str | None] = mapped_column(String(300))
+    source_language: Mapped[str | None] = mapped_column(String(40))
+    reliability_notes: Mapped[str | None] = mapped_column(Text)
+    normalized_url: Mapped[str | None] = mapped_column(String(2048))
+    position: Mapped[int | None] = mapped_column(Integer)
 
     investigation: Mapped[Investigation] = relationship(back_populates="sources")
     evidence_items: Mapped[list[EvidenceItem]] = relationship(back_populates="source")
@@ -98,10 +114,20 @@ class EvidenceItem(UUIDPrimaryKeyMixin, TimestampMixin, UserAuditMixin, Base):
         UUID(as_uuid=True),
         ForeignKey("sources.id", ondelete="SET NULL"),
     )
+    archive_document_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("archive_documents.id", ondelete="SET NULL"),
+    )
     excerpt: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
     stance: Mapped[EvidenceStance | None] = mapped_column(
         pg_enum(EvidenceStance, name="evidence_stance"),
+    )
+    position: Mapped[int | None] = mapped_column(Integer)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    verified_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
     )
 
     investigation: Mapped[Investigation] = relationship(back_populates="evidence_items")

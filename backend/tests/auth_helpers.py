@@ -36,7 +36,10 @@ async def api_application(db_session_for_api: AsyncSession):
     from app.main import create_app
 
     database_url = resolve_test_database_url().replace("postgresql+asyncpg://", "postgresql://")
+    from app.storage.memory import InMemoryStorage
+
     application = create_app(settings_for_tests(database_url=database_url))
+    application.state.object_storage = InMemoryStorage()
 
     async def override_db() -> AsyncIterator[AsyncSession]:
         yield db_session_for_api
@@ -70,6 +73,32 @@ def csrf_headers(csrf_token: str) -> dict[str, str]:
         CSRF_HEADER_NAME: csrf_token,
         "Origin": "http://localhost:5173",
     }
+
+
+@pytest.fixture
+def as_user(api_client_factory, db_session_for_api):
+    """Log in as a freshly created user with the given roles."""
+
+    @asynccontextmanager
+    async def _as_user(
+        *,
+        roles,
+        email: str | None = None,
+        password: str = "correct-horse-battery-staple",
+    ):
+        from tests.factories import make_user
+
+        user = await make_user(
+            db_session_for_api,
+            email=email,
+            roles=roles,
+            password=password,
+        )
+        async with api_client_factory() as client:
+            session = await login(client, email=user.email, password=password)
+            yield client, user, session
+
+    return _as_user
 
 
 async def login(

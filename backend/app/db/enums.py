@@ -81,3 +81,14 @@ class SubmissionChannel(StrEnum):
     PUBLIC_FORM = "public_form"
     EDITORIAL = "editorial"
     MONITORING = "monitoring"
+
+
+class InvestigationAssignmentRole(StrEnum):
+    OWNER = "owner"
+    CONTRIBUTOR = "contributor"
+
+
+class ArchiveUploadStatus(StrEnum):
+    PENDING = "pending"
+    AVAILABLE = "available"
+    REJECTED = "rejected"

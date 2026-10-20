@@ -23,6 +23,11 @@ def production_settings(**overrides: Any) -> Settings:
         "database_url": "postgresql://tvn:production-password@db.internal:5432/tvn",
         "cors_origins": ["https://verify.example.org"],
         "log_level": "info",
+        "submission_submitter_hmac_key": "production-submitter-hmac-key",
+        "storage_endpoint_url": "https://s3.example.org",
+        "storage_bucket": "tvn-prod-archive",
+        "storage_access_key_id": "prod-access-key",
+        "storage_secret_access_key": "prod-secret-key",
     }
     values.update(overrides)
     return Settings(**values, _env_file=None)

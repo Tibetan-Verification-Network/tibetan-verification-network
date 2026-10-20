@@ -2,10 +2,17 @@
 
 from collections.abc import AsyncIterator
 
+from typing import cast
+
 from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import Settings
 from app.db.lifecycle import get_session_factory
+
+
+def get_app_settings(request: Request) -> Settings:
+    return cast(Settings, request.app.state.settings)
 
 
 async def get_db_session(request: Request) -> AsyncIterator[AsyncSession]:

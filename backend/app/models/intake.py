@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -54,8 +55,28 @@ class Submission(UUIDPrimaryKeyMixin, TimestampMixin, UserAuditMixin, Base):
         UUID(as_uuid=True),
         ForeignKey("claims.id", ondelete="SET NULL"),
     )
+    assigned_to_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+    )
+    triaged_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+    )
+    triaged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    triage_note: Mapped[str | None] = mapped_column(Text)
+    duplicate_of_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("submissions.id", ondelete="SET NULL"),
+    )
+    text_fingerprint: Mapped[str | None] = mapped_column(String(64))
+    submitter_key_hash: Mapped[str | None] = mapped_column(String(64))
 
     claim: Mapped[Claim | None] = relationship(back_populates="submissions")
+    duplicate_of: Mapped[Submission | None] = relationship(
+        remote_side="Submission.id",
+        foreign_keys=[duplicate_of_id],
+    )
     contact: Mapped[SubmissionContact | None] = relationship(
         back_populates="submission",
         uselist=False,
@@ -66,6 +87,8 @@ class Submission(UUIDPrimaryKeyMixin, TimestampMixin, UserAuditMixin, Base):
         Index("ix_submissions_workflow_status", "workflow_status"),
         Index("ix_submissions_created_at", "created_at"),
         Index("ix_submissions_claim_id", "claim_id"),
+        Index("ix_submissions_text_fingerprint", "text_fingerprint"),
+        Index("ix_submissions_assigned_to_id", "assigned_to_id"),
     )
 
 

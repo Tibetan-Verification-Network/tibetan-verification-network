@@ -51,6 +51,21 @@ class Settings(BaseSettings):
     password_min_length: int = Field(default=12, ge=8, le=128)
     session_cookie_name: str = "tvn_session"
     session_cookie_secure: bool | None = None
+    submission_max_body_bytes: int = Field(default=32_768, ge=1024, le=256_000)
+    submission_rate_limit_ip_max: int = Field(default=20, ge=1, le=10_000)
+    submission_rate_limit_ip_window_seconds: int = Field(default=3600, ge=60, le=86_400)
+    submission_rate_limit_global_max: int = Field(default=500, ge=1, le=1_000_000)
+    submission_rate_limit_global_window_seconds: int = Field(default=3600, ge=60, le=86_400)
+    submission_duplicate_similarity_threshold: float = Field(default=0.35, ge=0.1, le=0.99)
+    submission_submitter_hmac_key: SecretStr = SecretStr("local-dev-submitter-hmac-key")
+    submission_captcha_enabled: bool = False
+    storage_endpoint_url: str | None = None
+    storage_bucket: str = "tvn-archive-local"
+    storage_access_key_id: SecretStr = SecretStr("minioadmin")
+    storage_secret_access_key: SecretStr = SecretStr("minioadmin")
+    storage_region: str = "us-east-1"
+    archive_max_upload_bytes: int = Field(default=26_214_400, ge=1024, le=104_857_600)
+    archive_signed_url_ttl_seconds: int = Field(default=120, ge=30, le=3600)
 
     @field_validator("session_cookie_name")
     @classmethod
@@ -118,6 +133,17 @@ class Settings(BaseSettings):
         password = urlsplit(self.database_url.get_secret_value()).password
         if password == LOCAL_DEVELOPMENT_DATABASE_PASSWORD:
             raise ValueError("Production database URL must not use the local development password")
+        if self.submission_submitter_hmac_key.get_secret_value() == "local-dev-submitter-hmac-key":
+            raise ValueError("Production requires a dedicated submission submitter HMAC key")
+        if not self.storage_endpoint_url:
+            raise ValueError("Production requires STORAGE_ENDPOINT_URL")
+        parsed_storage = urlsplit(self.storage_endpoint_url)
+        if parsed_storage.scheme != "https":
+            raise ValueError("Production storage endpoint must use https")
+        if self.storage_bucket in {"tvn-archive-local", "test", "tvn"}:
+            raise ValueError("Production storage bucket must not use a default placeholder name")
+        if self.storage_access_key_id.get_secret_value() == "minioadmin":
+            raise ValueError("Production requires dedicated storage credentials")
         return self
 
 

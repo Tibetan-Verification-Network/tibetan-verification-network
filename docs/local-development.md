@@ -34,8 +34,15 @@ cp .env.example .env
 | `SESSION_TTL_HOURS` | `168` | Session lifetime. |
 | `INVITE_TTL_HOURS` | `168` | Invite lifetime. |
 | `PASSWORD_MIN_LENGTH` | `12` | Enforced by the API. The staff forms use the same minimum. |
+| `STORAGE_ENDPOINT_URL` | `http://127.0.0.1:9000` | MinIO API when using Compose. Host-side API uses loopback; the API container uses `http://minio:9000`. |
+| `STORAGE_BUCKET` | `tvn-archive` | Private archive bucket (created by `minio-init` in Compose). |
+| `STORAGE_ACCESS_KEY_ID` / `STORAGE_SECRET_ACCESS_KEY` | `minioadmin` | Local MinIO credentials only. |
+| `ARCHIVE_MAX_UPLOAD_BYTES` | `26214400` (25 MiB) | Enforced on investigation document uploads. |
+| `ARCHIVE_SIGNED_URL_TTL_SECONDS` | `120` | Presigned download link lifetime. |
 
 `SESSION_COOKIE_NAME` defaults to `tvn_session` and does not need to be set locally.
+
+Compose starts **MinIO** on http://127.0.0.1:9000 (API) and http://127.0.0.1:9001 (console). The `minio-init` job creates the `tvn-archive` bucket before the API starts.
 
 Set `TVN_ENV_FILE=` (empty) when a process must ignore `.env` and use only the variables you exported. Tests do this.
 

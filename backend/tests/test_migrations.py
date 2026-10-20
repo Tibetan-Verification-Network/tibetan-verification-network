@@ -24,7 +24,9 @@ EXPECTED_TABLES = frozenset(
         "evidence_items",
         "fact_check_contents",
         "fact_checks",
+        "investigation_assignments",
         "investigations",
+        "rate_limit_counters",
         "research_runs",
         "reviews",
         "roles",
@@ -64,6 +66,16 @@ async def test_upgrade_head_on_empty_database_creates_core_tables() -> None:
         await engine.dispose()
 
     assert EXPECTED_TABLES.issubset(tables)
+
+
+async def test_downgrade_head_to_base_on_empty_database() -> None:
+    database_url = migration_database_url()
+    if not await postgres_is_available(database_url):
+        pytest.skip("PostgreSQL is not available for migration tests")
+    await ensure_database(database_url)
+    downgrade_base(database_url)
+    upgrade_head(database_url)
+    downgrade_base(database_url)
 
 
 async def test_role_seed_and_user_role_uniqueness_after_migration(test_engine: AsyncEngine) -> None:

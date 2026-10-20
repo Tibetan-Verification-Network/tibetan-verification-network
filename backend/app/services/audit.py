@@ -19,6 +19,9 @@ SENSITIVE_PAYLOAD_KEYS = frozenset(
         "csrf_token",
         "cookie",
         "authorization",
+        "contact_email",
+        "contact_phone",
+        "contact_name",
     }
 )
 
@@ -34,6 +37,20 @@ class AuditEventType:
     SESSION_REVOKED = "auth.session_revoked"
     USER_DISABLED = "user.disabled"
     USER_ROLES_UPDATED = "user.roles_updated"
+    SUBMISSION_TRIAGED = "submission.triaged"
+    SUBMISSION_MERGED = "submission.merged"
+    INVESTIGATION_ASSIGNED = "investigation.assigned"
+    INVESTIGATION_UNASSIGNED = "investigation.unassigned"
+    INVESTIGATION_CREATED = "investigation.created"
+    INVESTIGATION_STATUS_CHANGED = "investigation.status_changed"
+    SOURCE_DELETED = "source.deleted"
+    EVIDENCE_DELETED = "evidence.deleted"
+    SUBMISSION_CONTACT_VIEWED = "submission.contact_viewed"
+    ARCHIVE_UPLOADED = "archive.uploaded"
+    ARCHIVE_RECLASSIFIED = "archive.reclassified"
+    ARCHIVE_GRANT_CREATED = "archive.grant_created"
+    ARCHIVE_GRANT_REVOKED = "archive.grant_revoked"
+    ARCHIVE_RESTRICTED_ACCESS_LINK = "archive.restricted_access_link"
 
 
 def sanitize_payload(payload: dict[str, Any] | None) -> dict[str, Any] | None:

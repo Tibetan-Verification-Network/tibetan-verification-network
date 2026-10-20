@@ -2,10 +2,12 @@
 
 from fastapi import APIRouter
 
+from app.api.routes.editorial_intake import router as editorial_intake_router
 from app.core.permissions import RequireStaff
 from app.schemas.auth import EditorialStatusResponse
 
 router = APIRouter(prefix="/editorial", tags=["editorial"])
+router.include_router(editorial_intake_router)
 
 
 @router.get("/status", response_model=EditorialStatusResponse)

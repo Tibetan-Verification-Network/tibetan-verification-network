@@ -7,7 +7,7 @@ todos:
     status: completed
   - id: phase-2-editorial-safety
     content: "Phase 2: Implement submissions, triage, investigations, evidence provenance, private archive storage, and object-level permissions."
-    status: pending
+    status: completed
   - id: phase-3-publication-integrity
     content: "Phase 3: Implement workflow transitions, review, independent approval, immutable publication snapshots, audit, and corrections."
     status: pending

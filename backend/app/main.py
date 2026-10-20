@@ -9,16 +9,20 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 from app.api.routes.admin import router as admin_router
+from app.api.routes.archive import archive_router, investigation_archive_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.editorial import router as editorial_router
 from app.api.routes.health import router as health_router
+from app.api.routes.investigations import router as investigations_router
 from app.api.routes.me import router as me_router
 from app.api.routes.service import router as service_router
+from app.api.routes.submissions import router as submissions_router
 from app.core.config import Settings, get_settings
 from app.core.constants import API_VERSION, PRODUCT_NAME
 from app.core.logging import build_log_config, configure_logging
 from app.core.middleware import RequestIdMiddleware
 from app.core.security import CSRF_HEADER_NAME
+from app.core.submission_middleware import SubmissionBodyLimitMiddleware
 from app.db.lifecycle import database_lifespan
 
 
@@ -50,6 +54,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["Accept", "Content-Type", "X-Request-ID", CSRF_HEADER_NAME],
         expose_headers=["X-Request-ID"],
     )
+    app.add_middleware(
+        SubmissionBodyLimitMiddleware,
+        max_bytes=resolved.submission_max_body_bytes,
+    )
     app.add_middleware(RequestIdMiddleware)
     app.include_router(health_router)
     app.include_router(service_router, prefix="/api/v1")
@@ -57,6 +65,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(me_router, prefix="/api/v1")
     app.include_router(admin_router, prefix="/api/v1")
     app.include_router(editorial_router, prefix="/api/v1")
+    app.include_router(submissions_router, prefix="/api/v1")
+    app.include_router(investigations_router, prefix="/api/v1")
+    app.include_router(investigation_archive_router, prefix="/api/v1")
+    app.include_router(archive_router, prefix="/api/v1")
     return app
 
 
