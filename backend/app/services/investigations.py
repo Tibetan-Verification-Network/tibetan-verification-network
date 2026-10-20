@@ -206,25 +206,22 @@ async def change_investigation_status(
     actor: User,
     body: InvestigationStatusRequest,
 ) -> InvestigationDetailResponse:
-    previous = investigation.workflow_status
-    investigation.workflow_status = body.status
-    if body.status == WorkflowStatus.ON_HOLD:
-        investigation.hold_reason = body.reason
-    elif body.status == WorkflowStatus.RESEARCHING:
-        investigation.hold_reason = None
-    investigation.updated_by_id = actor.id
-    await record_audit_event(
-        session,
-        event_type=AuditEventType.INVESTIGATION_STATUS_CHANGED,
-        actor_user_id=actor.id,
-        subject_type="investigation",
-        subject_id=investigation.id,
-        payload={
-            "from_status": previous.value,
-            "to_status": body.status.value,
-        },
-    )
-    await session.flush()
+    from app.workflow.engine import apply_investigation_status
+    from app.workflow.exceptions import InvalidTransitionError, TransitionBlockedError
+    from app.workflow.http import http_conflict_from_guard, http_conflict_from_transition
+
+    try:
+        await apply_investigation_status(
+            session,
+            investigation=investigation,
+            to_status=body.status,
+            actor=actor,
+            reason=body.reason,
+        )
+    except InvalidTransitionError as exc:
+        raise http_conflict_from_transition(exc) from exc
+    except TransitionBlockedError as exc:
+        raise http_conflict_from_guard(exc) from exc
     return await get_investigation_detail(session, investigation=investigation)
 
 

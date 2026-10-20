@@ -40,8 +40,10 @@ class LanguageEditorialStatus(StrEnum):
     DRAFT = "draft"
     IN_REVIEW = "in_review"
     CHANGES_REQUESTED = "changes_requested"
+    READY_FOR_APPROVAL = "ready_for_approval"
     APPROVED = "approved"
     PUBLISHED = "published"
+    WITHDRAWN = "withdrawn"
 
 
 class TranslationStatus(StrEnum):
@@ -67,7 +69,16 @@ class ArchiveVisibility(StrEnum):
 class ReviewDecision(StrEnum):
     COMMENT = "comment"
     REQUEST_CHANGES = "request_changes"
+    MARK_READY = "mark_ready"
     APPROVE = "approve"
+
+
+class ArticleVersionKind(StrEnum):
+    INITIAL = "initial"
+    CORRECTION = "correction"
+    UPDATE = "update"
+    CLARIFICATION = "clarification"
+    WITHDRAWAL = "withdrawal"
 
 
 class ResearchRunStatus(StrEnum):

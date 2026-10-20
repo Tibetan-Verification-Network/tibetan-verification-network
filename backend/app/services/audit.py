@@ -51,6 +51,22 @@ class AuditEventType:
     ARCHIVE_GRANT_CREATED = "archive.grant_created"
     ARCHIVE_GRANT_REVOKED = "archive.grant_revoked"
     ARCHIVE_RESTRICTED_ACCESS_LINK = "archive.restricted_access_link"
+    WORKFLOW_TRANSITION = "workflow.transition"
+    FACTCHECK_CREATED = "factcheck.created"
+    DRAFT_REVISION_SAVED = "draft.revision_saved"
+    DRAFT_SUBMITTED_FOR_REVIEW = "draft.submitted_for_review"
+    REVIEW_COMMENTED = "review.commented"
+    REVIEW_CHANGES_REQUESTED = "review.changes_requested"
+    REVIEW_MARKED_READY = "review.marked_ready"
+    REVIEW_APPROVED = "review.approved"
+    REVIEW_REOPENED = "review.reopened"
+    REVIEW_INVALIDATED = "review.invalidated"
+    READINESS_BLOCKED = "readiness.blocked"
+    EVIDENCE_VERIFIED = "evidence.verified"
+    EVIDENCE_VERIFICATION_CLEARED = "evidence.verification_cleared"
+    FACTCHECK_PUBLISHED = "factcheck.published"
+    FACTCHECK_CORRECTION_STARTED = "factcheck.correction_started"
+    FACTCHECK_WITHDRAWN = "factcheck.withdrawn"
 
 
 def sanitize_payload(payload: dict[str, Any] | None) -> dict[str, Any] | None:

@@ -37,6 +37,9 @@ from app.schemas.intake import (
     TriageRequest,
 )
 from app.services.audit import AuditEventType, record_audit_event
+from app.workflow.engine import apply_submission_status
+from app.workflow.exceptions import InvalidTransitionError, TransitionBlockedError
+from app.workflow.http import http_conflict_from_guard, http_conflict_from_transition
 from app.services.captcha import CaptchaVerifier
 from app.services.rate_limit import increment_rate_limit
 
@@ -333,32 +336,43 @@ async def apply_triage_action(
 
     audit_payload: dict[str, Any] = {"action": body.action}
 
+    async def transition_submission(to_status: WorkflowStatus, *, reason: str | None = None) -> None:
+        if submission.workflow_status == to_status:
+            return
+        try:
+            await apply_submission_status(
+                session,
+                submission=submission,
+                to_status=to_status,
+                actor=actor,
+                reason=reason,
+            )
+        except InvalidTransitionError as exc:
+            raise http_conflict_from_transition(exc) from exc
+        except TransitionBlockedError as exc:
+            raise http_conflict_from_guard(exc) from exc
+
     if body.action == "reject":
-        submission.workflow_status = WorkflowStatus.REJECTED
-        submission.triage_note = body.reason
+        await transition_submission(WorkflowStatus.REJECTED, reason=body.reason)
     elif body.action == "hold":
-        submission.workflow_status = WorkflowStatus.ON_HOLD
-        submission.triage_note = body.reason
+        await transition_submission(WorkflowStatus.ON_HOLD, reason=body.reason)
     elif body.action == "mark_duplicate":
         duplicate = await session.get(Submission, body.duplicate_of_id)
         if duplicate is None:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
         submission.duplicate_of_id = body.duplicate_of_id
-        submission.workflow_status = WorkflowStatus.TRIAGED
         audit_payload["duplicate_of_id"] = str(body.duplicate_of_id)
     elif body.action == "link_to_claim":
         claim = await session.get(Claim, body.claim_id)
         if claim is None:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
         submission.claim_id = body.claim_id
-        submission.workflow_status = WorkflowStatus.TRIAGED
         audit_payload["claim_id"] = str(body.claim_id)
     elif body.action == "create_claim":
         claim = Claim(canonical_text=body.canonical_text, created_by_id=actor.id)
         session.add(claim)
         await session.flush()
         submission.claim_id = claim.id
-        submission.workflow_status = WorkflowStatus.TRIAGED
         audit_payload["claim_id"] = str(claim.id)
     elif body.action == "assign":
         if not is_editor(actor):
@@ -367,7 +381,6 @@ async def apply_triage_action(
         if assignee is None:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
         submission.assigned_to_id = body.user_id
-        submission.workflow_status = WorkflowStatus.TRIAGED
         audit_payload["assigned_to_id"] = str(body.user_id)
     elif body.action == "open_investigation":
         claim_id = submission.claim_id
@@ -393,10 +406,12 @@ async def apply_triage_action(
                 assigned_by_id=actor.id,
             )
         )
-        submission.workflow_status = WorkflowStatus.TRIAGED
         audit_payload["investigation_id"] = str(investigation.id)
     else:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+    if body.action not in {"reject", "hold"}:
+        await transition_submission(WorkflowStatus.TRIAGED)
 
     submission.triaged_by_id = actor.id
     submission.triaged_at = datetime.now(UTC)

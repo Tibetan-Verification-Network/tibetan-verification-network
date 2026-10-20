@@ -34,13 +34,20 @@ class InvestigationPatchRequest(BaseModel):
 class InvestigationStatusRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    status: Literal[WorkflowStatus.RESEARCHING, WorkflowStatus.ON_HOLD]
+    status: Literal[
+        WorkflowStatus.RESEARCHING,
+        WorkflowStatus.DRAFTING,
+        WorkflowStatus.ON_HOLD,
+        WorkflowStatus.REJECTED,
+    ]
     reason: str | None = Field(default=None, max_length=5000)
 
     @model_validator(mode="after")
     def require_reason_for_hold(self) -> InvestigationStatusRequest:
-        if self.status == WorkflowStatus.ON_HOLD and not (self.reason and self.reason.strip()):
-            raise ValueError("reason is required when status is on_hold")
+        if self.status in {WorkflowStatus.ON_HOLD, WorkflowStatus.REJECTED} and not (
+            self.reason and self.reason.strip()
+        ):
+            raise ValueError("reason is required when status is on_hold or rejected")
         return self
 
 

@@ -8,7 +8,15 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.policy import Action, can
-from app.db.enums import ArchiveVisibility, InvestigationAssignmentRole, RoleCode
+from app.db.enums import (
+    ArchiveVisibility,
+    InvestigationAssignmentRole,
+    LanguageCode,
+    LanguageEditorialStatus,
+    RoleCode,
+    WorkflowStatus,
+)
+from app.models.publication import FactCheck, FactCheckContent
 from tests.factories import make_document, make_investigation, make_submission, make_user
 
 pytestmark = pytest.mark.usefixtures("db_session")
@@ -20,6 +28,17 @@ async def test_platform_admin_without_editorial_role_is_denied(db_session: Async
     investigation = await make_investigation(db_session)
     document = await make_document(db_session, investigation=investigation)
 
+    fact_check = FactCheck(
+        investigation_id=investigation.id,
+        workflow_status=WorkflowStatus.DRAFTING,
+    )
+    fact_check.contents = [
+        FactCheckContent(
+            language=LanguageCode.EN,
+            editorial_status=LanguageEditorialStatus.READY_FOR_APPROVAL,
+        )
+    ]
+
     for action in Action:
         obj = None
         if action.value.startswith("submission."):
@@ -28,6 +47,12 @@ async def test_platform_admin_without_editorial_role_is_denied(db_session: Async
             obj = investigation
         elif action.value.startswith("archive."):
             obj = document
+        elif (
+            action.value.startswith("factcheck.")
+            or action.value.startswith("draft.")
+            or action.value.startswith("review.")
+        ):
+            obj = fact_check
         assert can(admin, action, obj) is False
 
 

@@ -12,6 +12,7 @@ from app.api.routes.admin import router as admin_router
 from app.api.routes.archive import archive_router, investigation_archive_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.editorial import router as editorial_router
+from app.api.routes.factchecks import editorial_factcheck_router, investigation_factcheck_router
 from app.api.routes.health import router as health_router
 from app.api.routes.investigations import router as investigations_router
 from app.api.routes.me import router as me_router
@@ -67,6 +68,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(editorial_router, prefix="/api/v1")
     app.include_router(submissions_router, prefix="/api/v1")
     app.include_router(investigations_router, prefix="/api/v1")
+    app.include_router(investigation_factcheck_router, prefix="/api/v1")
+    app.include_router(editorial_factcheck_router, prefix="/api/v1")
     app.include_router(investigation_archive_router, prefix="/api/v1")
     app.include_router(archive_router, prefix="/api/v1")
     return app

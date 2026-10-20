@@ -238,12 +238,15 @@ async def patch_evidence(
     if item is None or item.investigation_id != investigation.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
+    clears_verification = False
     if body.source_id is not None:
         await _require_same_investigation_source(
             session,
             investigation_id=investigation.id,
             source_id=body.source_id,
         )
+        if body.source_id != item.source_id:
+            clears_verification = True
         item.source_id = body.source_id
     if body.archive_document_id is not None:
         await _require_same_investigation_document(
@@ -253,6 +256,8 @@ async def patch_evidence(
         )
         item.archive_document_id = body.archive_document_id
     if body.excerpt is not None:
+        if body.excerpt != item.excerpt:
+            clears_verification = True
         item.excerpt = body.excerpt
     if body.notes is not None:
         item.notes = body.notes
@@ -260,8 +265,47 @@ async def patch_evidence(
         item.stance = body.stance
     if body.position is not None:
         item.position = body.position
+    if clears_verification and item.verified_at is not None:
+        item.verified_at = None
+        item.verified_by_id = None
+        await record_audit_event(
+            session,
+            event_type=AuditEventType.EVIDENCE_VERIFICATION_CLEARED,
+            actor_user_id=actor.id,
+            subject_type="evidence_item",
+            subject_id=item.id,
+            payload={"investigation_id": str(investigation.id), "reason": "material_edit"},
+        )
     item.updated_by_id = actor.id
     await session.flush()
+    return EvidenceResponse.model_validate(item)
+
+
+async def verify_evidence(
+    session: AsyncSession,
+    *,
+    investigation: Investigation,
+    evidence_id: uuid.UUID,
+    actor: User,
+) -> EvidenceResponse:
+    item = await session.get(EvidenceItem, evidence_id)
+    if item is None or item.investigation_id != investigation.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    now = datetime.now(UTC)
+    item.verified_at = now
+    item.verified_by_id = actor.id
+    item.updated_by_id = actor.id
+    await record_audit_event(
+        session,
+        event_type=AuditEventType.EVIDENCE_VERIFIED,
+        actor_user_id=actor.id,
+        subject_type="evidence_item",
+        subject_id=item.id,
+        payload={"investigation_id": str(investigation.id)},
+    )
+    await session.flush()
+    await session.refresh(item)
     return EvidenceResponse.model_validate(item)
 
 

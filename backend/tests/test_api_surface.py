@@ -6,6 +6,8 @@ ALLOWED_PUBLIC_PATHS = {
     "/api/v1/submissions",
 }
 ALLOWED_EDITORIAL_PATHS = {
+    "/api/v1/editorial/approval-queue",
+    "/api/v1/editorial/audit",
     "/api/v1/editorial/status",
     "/api/v1/editorial/submissions",
     "/api/v1/editorial/submissions/{submission_id}",
@@ -26,7 +28,30 @@ ALLOWED_INVESTIGATION_PATHS = {
     "/api/v1/investigations/{investigation_id}/evidence",
     "/api/v1/investigations/{investigation_id}/evidence/reorder",
     "/api/v1/investigations/{investigation_id}/evidence/{evidence_id}",
+    "/api/v1/investigations/{investigation_id}/evidence/{evidence_id}/verify",
     "/api/v1/investigations/{investigation_id}/documents",
+    "/api/v1/investigations/{investigation_id}/factcheck",
+}
+ALLOWED_FACTCHECK_EDITORIAL_PATHS = {
+    "/api/v1/editorial/factchecks",
+    "/api/v1/editorial/approval-queue",
+    "/api/v1/editorial/factchecks/{fact_check_id}",
+    "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}",
+    "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/sources",
+    "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/preview",
+    "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/revisions",
+    "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/readiness",
+    "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/submit-for-review",
+    "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/reviews",
+    "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/request-changes",
+    "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/mark-ready",
+    "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/approve",
+    "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/reopen",
+    "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/publish",
+    "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/corrections",
+    "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/withdraw",
+    "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/versions",
+    "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/versions/{version_number}",
 }
 ALLOWED_ARCHIVE_PATHS = {
     "/api/v1/archive/documents",
@@ -42,14 +67,16 @@ async def test_openapi_editorial_surface_matches_phase_two(client: AsyncClient) 
     response = await client.get("/openapi.json")
     assert response.status_code == 200
     paths = response.json()["paths"]
-    forbidden_fragments = (
-        "/factchecks",
-        "/fact-checks",
-    )
+    forbidden_fragments = ("/fact-checks",)
     for path in paths:
         for fragment in forbidden_fragments:
             assert fragment not in path
         if path in ALLOWED_PUBLIC_PATHS:
+            continue
+        if path == "/api/v1/editorial/approval-queue":
+            continue
+        if "/editorial/factchecks" in path:
+            assert path in ALLOWED_FACTCHECK_EDITORIAL_PATHS
             continue
         if "/editorial" in path:
             assert path in ALLOWED_EDITORIAL_PATHS

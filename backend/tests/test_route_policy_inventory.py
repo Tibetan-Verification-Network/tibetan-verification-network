@@ -17,7 +17,12 @@ def test_editorial_and_investigation_routes_use_policy_loaders() -> None:
         methods = getattr(route, "methods", set()) or set()
         if not path.startswith("/api/v1/"):
             continue
-        if "/editorial" not in path and "/investigations" not in path and "/archive" not in path:
+        if (
+            "/editorial" not in path
+            and "/investigations" not in path
+            and "/archive" not in path
+            and "/factchecks" not in path
+        ):
             continue
         for method in methods:
             if method in {"HEAD", "OPTIONS"}:

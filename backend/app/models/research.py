@@ -41,6 +41,9 @@ class Investigation(UUIDPrimaryKeyMixin, TimestampMixin, UserAuditMixin, Base):
     )
     internal_notes: Mapped[str | None] = mapped_column(Text)
     hold_reason: Mapped[str | None] = mapped_column(Text)
+    hold_from_status: Mapped[WorkflowStatus | None] = mapped_column(
+        pg_enum(WorkflowStatus, name="workflow_status"),
+    )
     reject_reason: Mapped[str | None] = mapped_column(Text)
 
     claim: Mapped[Claim] = relationship(back_populates="investigations")

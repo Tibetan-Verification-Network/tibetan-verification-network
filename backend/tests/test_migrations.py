@@ -22,6 +22,8 @@ EXPECTED_TABLES = frozenset(
         "auth_sessions",
         "claims",
         "evidence_items",
+        "fact_check_content_revisions",
+        "fact_check_content_sources",
         "fact_check_contents",
         "fact_checks",
         "investigation_assignments",

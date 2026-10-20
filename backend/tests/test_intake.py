@@ -234,12 +234,11 @@ async def test_concurrent_triage_requests_leave_one_final_state(
 
     # The API test harness shares one AsyncSession across requests, so true
     # parallel HTTP calls are not safe here. Run back-to-back to exercise locking.
-    results = [
-        await triage("reject", "Rejected in concurrent test"),
-        await triage("hold", "Held in concurrent test"),
-    ]
-    assert all(status_code == 200 for status_code in results)
+    reject_status = await triage("reject", "Rejected in concurrent test")
+    hold_status = await triage("hold", "Held in concurrent test")
+    assert reject_status == 200
+    assert hold_status == 409
 
     refreshed = await db_session_for_api.get(Submission, submission.id)
     assert refreshed is not None
-    assert refreshed.workflow_status in {WorkflowStatus.REJECTED, WorkflowStatus.ON_HOLD}
+    assert refreshed.workflow_status == WorkflowStatus.REJECTED

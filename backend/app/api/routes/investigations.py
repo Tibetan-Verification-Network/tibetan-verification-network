@@ -38,6 +38,7 @@ from app.services.evidence import (
     patch_evidence,
     patch_source,
     reorder_evidence,
+    verify_evidence,
     reorder_sources,
 )
 from app.services.investigations import (
@@ -297,6 +298,28 @@ async def investigation_reorder_evidence(
         investigation=investigation,
         actor=auth.user,
         body=body,
+    )
+
+
+@router.post(
+    "/{investigation_id}/evidence/{evidence_id}/verify",
+    response_model=EvidenceResponse,
+)
+async def investigation_verify_evidence(
+    evidence_id: uuid.UUID,
+    investigation: Annotated[
+        Investigation,
+        Depends(load_investigation(Action.EVIDENCE_WRITE)),
+    ],
+    auth: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    _: Annotated[None, Depends(require_csrf_for_cookie_mutations)],
+) -> EvidenceResponse:
+    return await verify_evidence(
+        db,
+        investigation=investigation,
+        evidence_id=evidence_id,
+        actor=auth.user,
     )
 
 

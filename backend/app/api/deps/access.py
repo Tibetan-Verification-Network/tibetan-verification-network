@@ -16,6 +16,7 @@ from app.core.permissions import get_current_user
 from app.core.policy import Action, can
 from app.models.archive import ArchiveDocument
 from app.models.intake import Submission
+from app.models.publication import FactCheck
 from app.models.research import Investigation
 from app.services.auth import AuthenticatedUser
 
@@ -68,6 +69,28 @@ def load_investigation(action: Action) -> Callable[..., Awaitable[Investigation]
         return investigation
 
     return cast(Callable[..., Awaitable[Investigation]], _mark_loader(_dependency))
+
+
+def load_fact_check(action: Action) -> Callable[..., Awaitable[FactCheck]]:
+    async def _dependency(
+        fact_check_id: uuid.UUID,
+        auth: Annotated[AuthenticatedUser, Depends(get_current_user)],
+        db: Annotated[AsyncSession, Depends(get_db_session)],
+    ) -> FactCheck:
+        result = await db.execute(
+            select(FactCheck)
+            .where(FactCheck.id == fact_check_id)
+            .options(
+                selectinload(FactCheck.contents),
+                selectinload(FactCheck.investigation).selectinload(Investigation.assignments),
+            )
+        )
+        fact_check = result.scalar_one_or_none()
+        if fact_check is None or not can(auth.user, action, fact_check):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        return fact_check
+
+    return cast(Callable[..., Awaitable[FactCheck]], _mark_loader(_dependency))
 
 
 def load_archive_document(action: Action) -> Callable[..., Awaitable[ArchiveDocument]]:
