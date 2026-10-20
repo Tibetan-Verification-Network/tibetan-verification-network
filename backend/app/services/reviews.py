@@ -30,6 +30,7 @@ from app.schemas.factchecks import (
     ReadinessResponse,
     ReasonRequest,
     ReviewCommentRequest,
+    ReviewListResponse,
     ReviewResponse,
     SubmitForReviewResponse,
 )
@@ -252,6 +253,34 @@ async def submit_for_review(
         editorial_status=content.editorial_status,
         readiness_warnings=issues,
     )
+
+
+async def list_reviews(
+    session: AsyncSession,
+    *,
+    fact_check: FactCheck,
+    language: str,
+) -> ReviewListResponse:
+    """Internal review thread for one language, oldest first. Never part of a public snapshot."""
+    content = await _load_content_for_language(
+        session,
+        fact_check_id=fact_check.id,
+        language=_language_code(language),
+    )
+    if content is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    rows = (
+        (
+            await session.execute(
+                select(Review)
+                .where(Review.fact_check_content_id == content.id)
+                .order_by(Review.created_at.asc(), Review.id.asc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return ReviewListResponse(items=[_review_response(row) for row in rows])
 
 
 async def add_review_comment(
@@ -650,6 +679,8 @@ async def list_approval_queue(
         ApprovalQueueItemResponse(
             fact_check_id=row.fact_check_id,
             language=LanguageCode(row.language.value),
+            title=row.title,
+            public_slug=row.fact_check.public_slug,
             current_revision_number=row.current_revision_number,
             updated_at=row.updated_at,
         )

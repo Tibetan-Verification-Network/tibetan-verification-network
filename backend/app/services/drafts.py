@@ -39,6 +39,8 @@ from app.schemas.factchecks import (
     FactCheckCreateRequest,
     FactCheckCreateResponse,
     FactCheckDetailResponse,
+    FactCheckLanguageBriefResponse,
+    FactCheckListItemResponse,
     FactCheckListResponse,
     FactCheckPatchRequest,
     FactCheckSummaryResponse,
@@ -268,6 +270,7 @@ async def _language_summaries(
             )
         summaries.append(
             LanguageContentSummaryResponse(
+                content_id=content.id,
                 language=LanguageCode(content.language.value),
                 editorial_status=content.editorial_status,
                 translation_status=content.translation_status,
@@ -407,9 +410,28 @@ async def list_fact_checks(
 
     rows = cast(
         list[FactCheck],
-        (await session.execute(stmt.limit(limit + 1))).scalars().all(),
+        (
+            await session.execute(
+                stmt.options(selectinload(FactCheck.contents)).limit(limit + 1)
+            )
+        )
+        .scalars()
+        .all(),
     )
-    items = [FactCheckSummaryResponse.model_validate(row) for row in rows[:limit]]
+    items = [
+        FactCheckListItemResponse(
+            **FactCheckSummaryResponse.model_validate(row).model_dump(),
+            languages=[
+                FactCheckLanguageBriefResponse(
+                    language=LanguageCode(content.language.value),
+                    editorial_status=content.editorial_status,
+                    title=content.title,
+                )
+                for content in sorted(row.contents, key=lambda c: c.language.value)
+            ],
+        )
+        for row in rows[:limit]
+    ]
     next_cursor = None
     if len(rows) > limit:
         last = rows[limit - 1]

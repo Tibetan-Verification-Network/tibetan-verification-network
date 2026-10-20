@@ -40,6 +40,21 @@ Vitest and Testing Library cover:
 - Login and activation labels, errors, success, and the not-found page for `/register`
 - Protected `/editorial` routes, logout, and the `X-CSRF-Token` header on mutations
 - axe-core checks for the home, login, activation, editorial, and configuration screens
+- Every editorial screen (inbox, investigations, fact-checks, language page in each status and role, approvals, archive, topics, staff accounts), driven by a stateful in-memory fake of the staff API in `src/test/editorialApi.ts`
+- Role-aware navigation, role-gated routes, and that a control hidden for a role still gets the API's 403/404 (the backend side is `backend/tests/test_ui_hidden_controls.py`)
+- `ConfirmDialog` focus trap, typed confirmation and Escape, and the 404/409/422 mapping in `EditorialError`
+- The API client's single retry after a stale CSRF token (a second tab rotates the session's token)
+
+### End-to-end (Playwright)
+
+`frontend/e2e/` runs against a migrated and seeded Compose stack (`backend/scripts/seed_e2e.py`). `public.spec.ts` covers the public site. `editorial.spec.ts` takes a public claim through triage, evidence, drafting in both languages with an edit conflict, review, approval, publication, a correction and a withdrawal using the three seeded staff. Each run uses its own claim and slug, so it can be repeated.
+
+```sh
+cd frontend && npx playwright install chromium
+cd frontend && E2E_BASE_URL=http://localhost:5173 npm run e2e
+```
+
+Use the same host for the site and the API (`localhost` with the default Compose settings). Cookies and the CORS allow-list differ between `localhost` and `127.0.0.1`, and CI uses `127.0.0.1` for both.
 
 `npm run build` is `tsc --noEmit` plus `vite build`. `scripts/verify-dist.mjs` fails the build if the old product name, a database URL, or a Google Fonts host appears, or if the self-hosted Tibetan font file is missing.
 

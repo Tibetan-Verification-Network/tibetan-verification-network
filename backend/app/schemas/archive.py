@@ -58,6 +58,10 @@ class ArchiveGrantResponse(BaseModel):
     created_at: datetime
 
 
+class ArchiveGrantListResponse(BaseModel):
+    items: list[ArchiveGrantResponse]
+
+
 class ArchiveAccessLinkResponse(BaseModel):
     url: str
     expires_at: datetime

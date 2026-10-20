@@ -48,11 +48,33 @@ function fieldErrorsFrom(detail: unknown): Record<string, ApiErrorCode> {
   return errors;
 }
 
+function structuredDetail(detail: unknown): {
+  code?: string;
+  message?: string;
+  issues?: readonly string[];
+} {
+  if (typeof detail !== "object" || detail === null || Array.isArray(detail)) {
+    return {};
+  }
+  const result: { code?: string; message?: string; issues?: readonly string[] } = {};
+  if ("code" in detail && typeof detail.code === "string") {
+    result.code = detail.code;
+  }
+  if ("message" in detail && typeof detail.message === "string") {
+    result.message = detail.message;
+  }
+  if ("issues" in detail && Array.isArray(detail.issues)) {
+    result.issues = detail.issues.filter((issue): issue is string => typeof issue === "string");
+  }
+  return result;
+}
+
 function errorFromPayload(status: number, payload: unknown): ApiError {
   const detail =
     typeof payload === "object" && payload !== null && "detail" in payload
       ? payload.detail
       : undefined;
+  const info = structuredDetail(detail);
   if (typeof detail === "string") {
     if (detail === "Invalid email or password.") {
       return new ApiError(status, "login.invalid");
@@ -88,16 +110,48 @@ function errorFromPayload(status: number, payload: unknown): ApiError {
   if (status === 403) {
     return new ApiError(status, "errors.forbidden");
   }
-  if (status === 400 || status === 422) {
-    return new ApiError(status, "errors.generic", fieldErrorsFrom(detail));
+  if (status === 404) {
+    return new ApiError(status, "errors.notFound", {}, {}, info);
   }
-  return new ApiError(status, "errors.generic");
+  if (status === 409) {
+    return new ApiError(status, "errors.conflict", {}, {}, info);
+  }
+  if (status === 400 || status === 422) {
+    return new ApiError(status, "errors.validation", fieldErrorsFrom(detail), {}, info);
+  }
+  return new ApiError(status, "errors.generic", {}, {}, info);
 }
 
 export interface ApiRequestOptions {
   method?: string;
+  /** A plain object is sent as JSON. A `FormData` is sent as multipart, for archive uploads. */
   body?: unknown;
   signal?: AbortSignal;
+}
+
+/**
+ * A session has one CSRF token and every tab that loads asks for a new one, so a second tab makes
+ * the first tab's token stale. The server rejects a stale token before it runs anything, which
+ * makes one retry with a fresh token safe.
+ */
+async function refreshCsrfToken(baseUrl: string, signal?: AbortSignal): Promise<boolean> {
+  try {
+    const payload = await apiRequest<unknown>(baseUrl, "/api/v1/auth/csrf", { signal });
+    if (
+      typeof payload === "object" &&
+      payload !== null &&
+      "csrf_token" in payload &&
+      typeof payload.csrf_token === "string"
+    ) {
+      csrfToken = payload.csrf_token;
+      return true;
+    }
+  } catch (error) {
+    if (isAbort(error)) {
+      throw error;
+    }
+  }
+  return false;
 }
 
 export async function apiRequest<T>(
@@ -105,9 +159,32 @@ export async function apiRequest<T>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<T> {
+  try {
+    return await sendRequest<T>(baseUrl, path, options);
+  } catch (error) {
+    const method = (options.method ?? "GET").toUpperCase();
+    if (
+      error instanceof ApiError &&
+      error.code === "errors.csrf" &&
+      MUTATING_METHODS.has(method) &&
+      csrfToken !== null &&
+      (await refreshCsrfToken(baseUrl, options.signal))
+    ) {
+      return sendRequest<T>(baseUrl, path, options);
+    }
+    throw error;
+  }
+}
+
+async function sendRequest<T>(
+  baseUrl: string,
+  path: string,
+  options: ApiRequestOptions,
+): Promise<T> {
   const method = (options.method ?? "GET").toUpperCase();
   const headers = new Headers({ Accept: "application/json" });
-  if (options.body !== undefined) {
+  const isForm = typeof FormData !== "undefined" && options.body instanceof FormData;
+  if (options.body !== undefined && !isForm) {
     headers.set("Content-Type", "application/json");
   }
   if (MUTATING_METHODS.has(method) && !CSRF_EXEMPT_PATHS.has(path) && csrfToken !== null) {
@@ -123,7 +200,12 @@ export async function apiRequest<T>(
       redirect: "error",
       referrerPolicy: "no-referrer",
       headers,
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      body:
+        options.body === undefined
+          ? undefined
+          : isForm
+            ? (options.body as FormData)
+            : JSON.stringify(options.body),
       signal: options.signal,
     });
   } catch (error) {

@@ -84,3 +84,20 @@ class UserSummaryResponse(BaseModel):
 class EditorialStatusResponse(BaseModel):
     status: str
     roles: list[RoleCode]
+
+
+class UserListResponse(BaseModel):
+    items: list[UserSummaryResponse]
+
+
+class StaffMemberResponse(BaseModel):
+    """Minimal staff directory entry for assignment pickers. No status or session data."""
+
+    id: uuid.UUID
+    email: str
+    display_name: str | None
+    roles: list[RoleCode]
+
+
+class StaffDirectoryResponse(BaseModel):
+    items: list[StaffMemberResponse]

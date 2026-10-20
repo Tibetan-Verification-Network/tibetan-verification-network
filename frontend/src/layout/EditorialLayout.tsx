@@ -7,20 +7,42 @@ import { useAuth } from "../auth/useAuth";
 import { Alert } from "../components/Alert";
 import { Button } from "../components/Button";
 import { useI18n } from "../i18n/useI18n";
+import { NotificationProvider } from "../editorial/components/Notifications";
+import { can } from "../editorial/roles";
+import type { CurrentUser } from "../api/types";
 import { AppFrame, type NavItem } from "./AppFrame";
 
-const EDITORIAL_NAV: readonly NavItem[] = [
-  { to: "/editorial", label: "nav.overview", end: true },
-  { to: "/editorial/inbox", label: "nav.inbox" },
-  { to: "/editorial/investigations", label: "nav.investigations" },
-  { to: "/editorial/drafts", label: "nav.drafts" },
-  { to: "/editorial/archive", label: "nav.archive" },
-  { to: "/", label: "nav.publicSite", end: true },
-];
+/** Only links the person can use. The API still refuses everything else. */
+function navFor(user: CurrentUser | null): NavItem[] {
+  const items: NavItem[] = [{ to: "/editorial", label: "nav.overview", end: true }];
+  if (can.triage(user)) {
+    items.push({ to: "/editorial/inbox", label: "nav.inbox" });
+  }
+  if (can.workEditorially(user)) {
+    items.push(
+      { to: "/editorial/investigations", label: "nav.investigations" },
+      { to: "/editorial/factchecks", label: "nav.factChecks" },
+    );
+  }
+  if (can.decide(user)) {
+    items.push({ to: "/editorial/approvals", label: "nav.approvals" });
+  }
+  if (can.workEditorially(user)) {
+    items.push({ to: "/editorial/archive", label: "nav.archive" });
+  }
+  if (can.manageTopics(user)) {
+    items.push({ to: "/editorial/topics", label: "nav.topics" });
+  }
+  if (can.administer(user)) {
+    items.push({ to: "/editorial/admin/users", label: "nav.admin" });
+  }
+  items.push({ to: "/", label: "nav.publicSite", end: true });
+  return items;
+}
 
 export function EditorialLayout() {
   const { t } = useI18n();
-  const { baseUrl, setUser } = useAuth();
+  const { baseUrl, setUser, user } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -43,15 +65,17 @@ export function EditorialLayout() {
   return (
     <AppFrame
       navLabel={t("nav.editorialLabel")}
-      items={EDITORIAL_NAV}
+      items={navFor(user)}
       actions={
         <Button variant="secondary" disabled={pending} onClick={() => void onLogout()}>
           {t("nav.logout")}
         </Button>
       }
     >
-      {error ? <Alert tone="error">{error}</Alert> : null}
-      <Outlet />
+      <NotificationProvider>
+        {error ? <Alert tone="error">{error}</Alert> : null}
+        <Outlet />
+      </NotificationProvider>
     </AppFrame>
   );
 }

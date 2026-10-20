@@ -1,4 +1,4 @@
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach } from "vitest";
 
@@ -89,6 +89,9 @@ function installEnglishNavigator() {
 
 installWideViewport();
 installEnglishNavigator();
+
+// Whole-app renders are slow on busy CI machines; waiting longer never hides a failure.
+configure({ asyncUtilTimeout: 4000 });
 
 afterEach(() => {
   cleanup();

@@ -13,10 +13,16 @@ from app.schemas.auth import (
     CreateInviteRequest,
     CreateInviteResponse,
     UpdateUserRolesRequest,
+    UserListResponse,
     UserSummaryResponse,
 )
 from app.services.invites import create_staff_invite
-from app.services.users import disable_user, get_user_with_roles, replace_user_roles
+from app.services.users import (
+    disable_user,
+    get_user_with_roles,
+    list_users_with_roles,
+    replace_user_roles,
+)
 
 router = APIRouter(prefix="/admin", tags=["administration"])
 
@@ -42,6 +48,16 @@ def _serialize_user_summary(user: object) -> UserSummaryResponse:
         is_active=user.is_active,
         disabled_at=user.disabled_at,
     )
+
+
+@router.get("/users", response_model=UserListResponse)
+async def list_staff_users(
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    auth: RequirePlatformAdmin,
+) -> UserListResponse:
+    del auth
+    users = await list_users_with_roles(db)
+    return UserListResponse(items=[_serialize_user_summary(user) for user in users])
 
 
 @router.post("/invites", response_model=CreateInviteResponse, status_code=status.HTTP_201_CREATED)

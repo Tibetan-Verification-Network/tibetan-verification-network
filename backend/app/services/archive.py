@@ -24,6 +24,7 @@ from app.schemas.archive import (
     ArchiveDocumentListResponse,
     ArchiveDocumentResponse,
     ArchiveGrantCreateRequest,
+    ArchiveGrantListResponse,
     ArchiveGrantResponse,
     ArchiveUploadFormMetadata,
 )
@@ -248,6 +249,13 @@ async def create_grant(
         },
     )
     return ArchiveGrantResponse.model_validate(grant)
+
+
+def list_grants(document: ArchiveDocument) -> ArchiveGrantListResponse:
+    """Grants that have not been revoked. Expired ones stay listed so staff can see why."""
+    live = [grant for grant in document.access_grants if grant.revoked_at is None]
+    live.sort(key=lambda grant: grant.created_at)
+    return ArchiveGrantListResponse(items=[ArchiveGrantResponse.model_validate(g) for g in live])
 
 
 async def revoke_grant(

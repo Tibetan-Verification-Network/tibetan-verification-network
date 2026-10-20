@@ -82,6 +82,7 @@ async def investigation_list(
     mine: bool = False,
     workflow_status: WorkflowStatus | None = None,
     owner_id: uuid.UUID | None = None,
+    claim_id: uuid.UUID | None = None,
 ) -> InvestigationListResponse:
     return await list_investigations(
         db,
@@ -91,6 +92,7 @@ async def investigation_list(
         mine=mine,
         workflow_status=workflow_status,
         owner_id=owner_id,
+        claim_id=claim_id,
     )
 
 

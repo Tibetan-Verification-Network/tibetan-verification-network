@@ -175,8 +175,13 @@ class InvestigationSummaryResponse(BaseModel):
     updated_at: datetime
 
 
+class InvestigationListItemResponse(InvestigationSummaryResponse):
+    claim_text: str
+
+
 class InvestigationDetailResponse(BaseModel):
     investigation: InvestigationSummaryResponse
+    fact_check_id: uuid.UUID | None = None
     claim: ClaimSummaryResponse
     internal_notes: str | None
     hold_reason: str | None
@@ -187,5 +192,5 @@ class InvestigationDetailResponse(BaseModel):
 
 
 class InvestigationListResponse(BaseModel):
-    items: list[InvestigationSummaryResponse]
+    items: list[InvestigationListItemResponse]
     next_cursor: str | None

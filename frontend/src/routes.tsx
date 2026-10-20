@@ -1,11 +1,25 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 
 import type { Locale } from "./i18n/translate";
 import { LOCALES } from "./i18n/translate";
 import { LegacyRedirect } from "./layout/LegacyRedirect";
 import { LocaleRoute } from "./layout/LocaleRoute";
 
+import type { StaffRole } from "./api/types";
 import { RequireAuth } from "./auth/RequireAuth";
+import { NoAccess, RequireRole } from "./editorial/components/NoAccess";
+import { AdminUsersPage } from "./editorial/pages/AdminUsersPage";
+import { ApprovalQueuePage } from "./editorial/pages/ApprovalQueuePage";
+import { ArchiveDocumentPage } from "./editorial/pages/ArchiveDocumentPage";
+import { ArchivePage } from "./editorial/pages/ArchivePage";
+import { FactCheckPage } from "./editorial/pages/FactCheckPage";
+import { FactChecksPage } from "./editorial/pages/FactChecksPage";
+import { InboxPage } from "./editorial/pages/InboxPage";
+import { InvestigationPage } from "./editorial/pages/InvestigationPage";
+import { InvestigationsPage } from "./editorial/pages/InvestigationsPage";
+import { LanguagePage } from "./editorial/pages/LanguagePage";
+import { SubmissionPage } from "./editorial/pages/SubmissionPage";
+import { TopicsAdminPage } from "./editorial/pages/TopicsAdminPage";
 import { EditorialLayout } from "./layout/EditorialLayout";
 import { PublicLayout } from "./layout/PublicLayout";
 import { ActivatePage } from "./pages/ActivatePage";
@@ -16,11 +30,12 @@ import { ArticleVersionPage } from "./pages/ArticleVersionPage";
 import { Home } from "./pages/Home";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
-import { PlaceholderPage } from "./pages/PlaceholderPage";
 import { SearchPage } from "./pages/SearchPage";
 import { SubmitPage } from "./pages/SubmitPage";
 import { TopicPage } from "./pages/TopicPage";
 import { TopicsPage } from "./pages/TopicsPage";
+
+const WORKERS: StaffRole[] = ["researcher", "editor", "approver"];
 
 /** Public routes are mounted once per locale prefix: `/en/...` and `/bo/...`. */
 function publicRoutes(locale: Locale) {
@@ -47,22 +62,102 @@ export function AppRoutes() {
           <Route index element={<EditorialHome />} />
           <Route
             path="inbox"
-            element={<PlaceholderPage titleKey="nav.inbox" bodyKey="placeholder.inbox" />}
+            element={
+              <RequireRole roles={["researcher", "editor"]}>
+                <InboxPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="inbox/:id"
+            element={
+              <RequireRole roles={["researcher", "editor"]}>
+                <SubmissionPage />
+              </RequireRole>
+            }
           />
           <Route
             path="investigations"
             element={
-              <PlaceholderPage titleKey="nav.investigations" bodyKey="placeholder.investigations" />
+              <RequireRole roles={WORKERS}>
+                <InvestigationsPage />
+              </RequireRole>
             }
           />
           <Route
-            path="drafts"
-            element={<PlaceholderPage titleKey="nav.drafts" bodyKey="placeholder.drafts" />}
+            path="investigations/:id"
+            element={
+              <RequireRole roles={WORKERS}>
+                <InvestigationPage />
+              </RequireRole>
+            }
+          />
+          <Route path="drafts" element={<Navigate to="/editorial/factchecks" replace />} />
+          <Route
+            path="factchecks"
+            element={
+              <RequireRole roles={WORKERS}>
+                <FactChecksPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="factchecks/:id"
+            element={
+              <RequireRole roles={WORKERS}>
+                <FactCheckPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="factchecks/:id/:language"
+            element={
+              <RequireRole roles={WORKERS}>
+                <LanguagePage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="approvals"
+            element={
+              <RequireRole roles={["approver"]}>
+                <ApprovalQueuePage />
+              </RequireRole>
+            }
           />
           <Route
             path="archive"
-            element={<PlaceholderPage titleKey="nav.archive" bodyKey="placeholder.archive" />}
+            element={
+              <RequireRole roles={WORKERS}>
+                <ArchivePage />
+              </RequireRole>
+            }
           />
+          <Route
+            path="archive/:id"
+            element={
+              <RequireRole roles={WORKERS}>
+                <ArchiveDocumentPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="topics"
+            element={
+              <RequireRole roles={["editor"]}>
+                <TopicsAdminPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="admin/users"
+            element={
+              <RequireRole roles={["platform_administrator"]}>
+                <AdminUsersPage />
+              </RequireRole>
+            }
+          />
+          <Route path="*" element={<NoAccess />} />
         </Route>
       </Route>
       {LOCALES.map(publicRoutes)}

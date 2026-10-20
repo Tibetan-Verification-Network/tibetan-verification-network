@@ -117,12 +117,20 @@ class Seeder:
         self._clients: dict[str, AsyncClient] = {}
         self._csrf: dict[str, str] = {}
 
-    async def ensure_user(self, email: str, role: RoleCode) -> User:
+    async def ensure_user(self, email: str, role: RoleCode, display_name: str) -> User:
         async with session_scope(self.factory) as session:
             existing = await session.scalar(select(User).where(User.email_normalized == email))
             if existing is not None:
+                # Distinct names let the editorial UI tell the three staff apart.
+                existing.display_name = display_name
                 return existing
-            return await make_user(session, email=email, roles=(role,), password=PASSWORD)
+            return await make_user(
+                session,
+                email=email,
+                roles=(role,),
+                password=PASSWORD,
+                display_name=display_name,
+            )
 
     async def login(self, email: str) -> None:
         client = AsyncClient(transport=self._transport, base_url="http://seed.local")
@@ -168,9 +176,9 @@ async def _run() -> None:
 
 
 async def _seed(seeder: Seeder, factory: async_sessionmaker[AsyncSession]) -> None:
-    author = await seeder.ensure_user(AUTHOR_EMAIL, RoleCode.RESEARCHER)
-    await seeder.ensure_user(EDITOR_EMAIL, RoleCode.EDITOR)
-    approver = await seeder.ensure_user(APPROVER_EMAIL, RoleCode.APPROVER)
+    author = await seeder.ensure_user(AUTHOR_EMAIL, RoleCode.RESEARCHER, "E2E Author")
+    await seeder.ensure_user(EDITOR_EMAIL, RoleCode.EDITOR, "E2E Editor")
+    approver = await seeder.ensure_user(APPROVER_EMAIL, RoleCode.APPROVER, "E2E Approver")
     for email in (AUTHOR_EMAIL, EDITOR_EMAIL, APPROVER_EMAIL):
         await seeder.login(email)
 

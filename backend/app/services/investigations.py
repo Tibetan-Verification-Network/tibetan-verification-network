@@ -16,6 +16,7 @@ from app.db.enums import InvestigationAssignmentRole, WorkflowStatus
 from app.models.assignments import InvestigationAssignment
 from app.models.identity import User
 from app.models.intake import Claim, Submission
+from app.models.publication import FactCheck
 from app.models.research import Investigation
 from app.schemas.intake import ClaimSummaryResponse
 from app.schemas.investigations import (
@@ -24,6 +25,7 @@ from app.schemas.investigations import (
     EvidenceResponse,
     InvestigationCreateRequest,
     InvestigationDetailResponse,
+    InvestigationListItemResponse,
     InvestigationListResponse,
     InvestigationPatchRequest,
     InvestigationStatusRequest,
@@ -44,7 +46,10 @@ def _assignment_responses(investigation: Investigation) -> list[AssignmentSummar
     ]
 
 
-def _investigation_detail(investigation: Investigation) -> InvestigationDetailResponse:
+def _investigation_detail(
+    investigation: Investigation,
+    fact_check_id: uuid.UUID | None = None,
+) -> InvestigationDetailResponse:
     sources = sorted(
         investigation.sources,
         key=lambda row: (row.position is None, row.position or 0, row.created_at),
@@ -55,6 +60,7 @@ def _investigation_detail(investigation: Investigation) -> InvestigationDetailRe
     )
     return InvestigationDetailResponse(
         investigation=InvestigationSummaryResponse.model_validate(investigation),
+        fact_check_id=fact_check_id,
         claim=ClaimSummaryResponse.model_validate(investigation.claim),
         internal_notes=investigation.internal_notes,
         hold_reason=investigation.hold_reason,
@@ -62,6 +68,15 @@ def _investigation_detail(investigation: Investigation) -> InvestigationDetailRe
         assignments=_assignment_responses(investigation),
         sources=[SourceResponse.model_validate(row) for row in sources],
         evidence_items=[EvidenceResponse.model_validate(row) for row in evidence],
+    )
+
+
+async def _fact_check_id_for(
+    session: AsyncSession,
+    investigation_id: uuid.UUID,
+) -> uuid.UUID | None:
+    return await session.scalar(
+        select(FactCheck.id).where(FactCheck.investigation_id == investigation_id)
     )
 
 
@@ -132,7 +147,7 @@ async def create_investigation(
     await session.flush()
     loaded = await _load_investigation_graph(session, investigation.id)
     assert loaded is not None
-    return _investigation_detail(loaded)
+    return _investigation_detail(loaded, await _fact_check_id_for(session, loaded.id))
 
 
 async def list_investigations(
@@ -144,6 +159,7 @@ async def list_investigations(
     mine: bool = False,
     workflow_status: WorkflowStatus | None = None,
     owner_id: uuid.UUID | None = None,
+    claim_id: uuid.UUID | None = None,
 ) -> InvestigationListResponse:
     stmt = scope_investigations(select(Investigation), user).order_by(
         Investigation.created_at.desc(),
@@ -155,6 +171,8 @@ async def list_investigations(
         stmt = stmt.where(Investigation.workflow_status == workflow_status)
     if owner_id is not None:
         stmt = stmt.where(Investigation.owner_id == owner_id)
+    if claim_id is not None:
+        stmt = stmt.where(Investigation.claim_id == claim_id)
     if cursor is not None:
         cursor_created_at, cursor_id = decode_keyset_cursor(cursor)
         stmt = stmt.where(
@@ -164,9 +182,17 @@ async def list_investigations(
 
     rows = cast(
         list[Investigation],
-        (await session.execute(stmt.limit(limit + 1))).scalars().all(),
+        (await session.execute(stmt.options(selectinload(Investigation.claim)).limit(limit + 1)))
+        .scalars()
+        .all(),
     )
-    items = [InvestigationSummaryResponse.model_validate(row) for row in rows[:limit]]
+    items = [
+        InvestigationListItemResponse(
+            **InvestigationSummaryResponse.model_validate(row).model_dump(),
+            claim_text=row.claim.canonical_text,
+        )
+        for row in rows[:limit]
+    ]
     next_cursor = None
     if len(rows) > limit:
         last = rows[limit - 1]
@@ -182,7 +208,7 @@ async def get_investigation_detail(
     loaded = await _load_investigation_graph(session, investigation.id)
     if loaded is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    return _investigation_detail(loaded)
+    return _investigation_detail(loaded, await _fact_check_id_for(session, loaded.id))
 
 
 async def patch_investigation(

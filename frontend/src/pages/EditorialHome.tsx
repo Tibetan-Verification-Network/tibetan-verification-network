@@ -5,6 +5,7 @@ import type { StaffRole } from "../api/types";
 import { useAuth } from "../auth/useAuth";
 import { DocumentTitle } from "../components/DocumentTitle";
 import type { MessageKey } from "../i18n/locales/en";
+import { NextActions } from "../editorial/NextActions";
 import { useI18n } from "../i18n/useI18n";
 
 const ROLE_LABELS = {
@@ -48,6 +49,7 @@ export function EditorialHome() {
           <li key={role}>{t(ROLE_LABELS[role])}</li>
         ))}
       </ul>
+      <NextActions />
       <p role="status">
         {probe === "loading"
           ? t("loading")

@@ -30,11 +30,13 @@ from app.schemas.factchecks import (
     FactCheckPatchRequest,
     MarkdownPreviewRequest,
     MarkdownPreviewResponse,
+    PublishPreviewResponse,
     PublishRequest,
     PublishResponse,
     ReadinessResponse,
     ReasonRequest,
     ReviewCommentRequest,
+    ReviewListResponse,
     ReviewResponse,
     RevisionListResponse,
     SubmitForReviewResponse,
@@ -56,6 +58,7 @@ from app.services.drafts import (
 from app.services.publication import (
     get_article_version,
     list_article_versions,
+    preview_publication,
     publish_language,
     start_correction,
     withdraw_language,
@@ -64,12 +67,13 @@ from app.services.reviews import (
     add_review_comment,
     approve_language,
     get_language_readiness,
+    list_reviews,
     mark_ready,
     reopen_language,
     request_changes,
     submit_for_review,
 )
-from app.services.topics import replace_fact_check_topics
+from app.services.topics import list_fact_check_topics, replace_fact_check_topics
 
 investigation_factcheck_router = APIRouter(tags=["factchecks"])
 
@@ -262,6 +266,21 @@ async def language_submit_for_review(
     )
 
 
+@editorial_factcheck_router.get(
+    "/{fact_check_id}/languages/{language}/reviews",
+    response_model=ReviewListResponse,
+)
+async def language_reviews_list(
+    language: LanguageCode,
+    fact_check: Annotated[
+        FactCheck,
+        Depends(load_fact_check(Action.FACTCHECK_VIEW)),
+    ],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> ReviewListResponse:
+    return await list_reviews(db, fact_check=fact_check, language=language.value)
+
+
 @editorial_factcheck_router.post(
     "/{fact_check_id}/languages/{language}/reviews",
     response_model=ReviewResponse,
@@ -419,6 +438,21 @@ async def language_publish(
     )
 
 
+@editorial_factcheck_router.get(
+    "/{fact_check_id}/languages/{language}/publish-preview",
+    response_model=PublishPreviewResponse,
+)
+async def language_publish_preview(
+    language: LanguageCode,
+    fact_check: Annotated[
+        FactCheck,
+        Depends(load_fact_check(Action.PUBLISH)),
+    ],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> PublishPreviewResponse:
+    return await preview_publication(db, fact_check=fact_check, language=language.value)
+
+
 @editorial_factcheck_router.post(
     "/{fact_check_id}/languages/{language}/corrections",
     response_model=DraftResponse,
@@ -501,6 +535,20 @@ async def language_version_get(
         language=language.value,
         version_number=version_number,
     )
+
+
+@editorial_factcheck_router.get(
+    "/{fact_check_id}/topics",
+    response_model=TopicListResponse,
+)
+async def fact_check_topics_list(
+    fact_check: Annotated[
+        FactCheck,
+        Depends(load_fact_check(Action.FACTCHECK_VIEW)),
+    ],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> TopicListResponse:
+    return await list_fact_check_topics(db, fact_check=fact_check)
 
 
 @editorial_factcheck_router.put(

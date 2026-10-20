@@ -21,6 +21,7 @@ from app.schemas.archive import (
     ArchiveDocumentListResponse,
     ArchiveDocumentResponse,
     ArchiveGrantCreateRequest,
+    ArchiveGrantListResponse,
     ArchiveGrantResponse,
     ArchiveUploadFormMetadata,
 )
@@ -29,6 +30,7 @@ from app.services.archive import (
     get_archive_document_detail,
     issue_access_link,
     list_archive_documents,
+    list_grants,
     reclassify_document,
     revoke_grant,
     upload_investigation_document,
@@ -125,6 +127,19 @@ async def archive_document_classification(
         visibility=body.visibility,
         reason=body.reason,
     )
+
+
+@archive_router.get(
+    "/documents/{document_id}/grants",
+    response_model=ArchiveGrantListResponse,
+)
+async def archive_document_grant_list(
+    document: Annotated[
+        ArchiveDocument,
+        Depends(load_archive_document(Action.ARCHIVE_GRANT)),
+    ],
+) -> ArchiveGrantListResponse:
+    return list_grants(document)
 
 
 @archive_router.post(

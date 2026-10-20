@@ -25,6 +25,9 @@ export type ApiErrorCode = Extract<
   | "errors.generic"
   | "errors.authRequired"
   | "errors.origin"
+  | "errors.notFound"
+  | "errors.conflict"
+  | "errors.validation"
 >;
 
 export class ApiError extends Error {
@@ -32,12 +35,19 @@ export class ApiError extends Error {
   readonly code: ApiErrorCode;
   readonly values: Record<string, string>;
   readonly fieldErrors: Readonly<Record<string, ApiErrorCode>>;
+  /** Machine code from a structured API `detail`, for example `stale_revision`. */
+  readonly serverCode: string | null;
+  /** English message from a structured API `detail`. Shown to staff as secondary text only. */
+  readonly serverMessage: string | null;
+  /** Readiness issue codes, when the API refused an action because a draft is incomplete. */
+  readonly issues: readonly string[];
 
   constructor(
     status: number,
     code: ApiErrorCode,
     fieldErrors: Record<string, ApiErrorCode> = {},
     values: Record<string, string> = {},
+    detail: { code?: string; message?: string; issues?: readonly string[] } = {},
   ) {
     super(code);
     this.name = "ApiError";
@@ -45,6 +55,9 @@ export class ApiError extends Error {
     this.code = code;
     this.fieldErrors = fieldErrors;
     this.values = values;
+    this.serverCode = detail.code ?? null;
+    this.serverMessage = detail.message ?? null;
+    this.issues = detail.issues ?? [];
   }
 }
 

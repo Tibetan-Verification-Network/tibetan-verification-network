@@ -13,11 +13,12 @@ from app.core.deps import get_db_session
 from app.core.permissions import RequireStaff
 from app.core.policy import Action
 from app.schemas.audit import AuditEventListResponse
-from app.schemas.auth import EditorialStatusResponse
+from app.schemas.auth import EditorialStatusResponse, StaffDirectoryResponse, StaffMemberResponse
 from app.schemas.factchecks import ApprovalQueueResponse
 from app.services.audit_query import list_audit_events
 from app.services.auth import AuthenticatedUser
 from app.services.reviews import list_approval_queue
+from app.services.users import list_assignable_staff
 
 router = APIRouter(prefix="/editorial", tags=["editorial"])
 router.include_router(editorial_intake_router)
@@ -40,6 +41,33 @@ async def editorial_status(
 ) -> EditorialStatusResponse:
     roles = sorted({assignment.role.code for assignment in auth.user.roles})
     return EditorialStatusResponse(status="ok", roles=roles)
+
+
+RequireStaffDirectory = Annotated[
+    AuthenticatedUser,
+    Depends(require_policy_action(Action.STAFF_DIRECTORY_VIEW)),
+]
+
+
+@router.get("/staff", response_model=StaffDirectoryResponse)
+async def editorial_staff_directory(
+    auth: RequireStaffDirectory,
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+) -> StaffDirectoryResponse:
+    """Who can be assigned work. Researchers and editors only; no account state is exposed."""
+    del auth
+    users = await list_assignable_staff(db)
+    return StaffDirectoryResponse(
+        items=[
+            StaffMemberResponse(
+                id=user.id,
+                email=user.email,
+                display_name=user.display_name,
+                roles=sorted({assignment.role.code for assignment in user.roles}),
+            )
+            for user in users
+        ]
+    )
 
 
 @router.get("/approval-queue", response_model=ApprovalQueueResponse)

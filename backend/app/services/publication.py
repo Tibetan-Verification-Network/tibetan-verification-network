@@ -21,6 +21,7 @@ from app.models.publication import (
     ArticleVersion,
     FactCheck,
     FactCheckContent,
+    FactCheckContentSource,
     Review,
 )
 from app.schemas.common import LanguageCode
@@ -32,6 +33,7 @@ from app.schemas.factchecks import (
     DraftResponse,
     PublicArticleSnapshot,
     PublicSnapshotSource,
+    PublishPreviewResponse,
     PublishRequest,
     PublishResponse,
     WithdrawRequest,
@@ -354,6 +356,66 @@ async def publish_language(
         editorial_status=LanguageEditorialStatus.PUBLISHED,
         version_number=version_number,
         content_checksum=checksum,
+    )
+
+
+async def preview_publication(
+    session: AsyncSession,
+    *,
+    fact_check: FactCheck,
+    language: str,
+) -> PublishPreviewResponse:
+    """Build the snapshot that publishing would freeze, without writing or locking anything."""
+    result = await session.execute(
+        select(FactCheckContent)
+        .where(
+            FactCheckContent.fact_check_id == fact_check.id,
+            FactCheckContent.language == _language_code(language),
+        )
+        .options(
+            selectinload(FactCheckContent.source_links).selectinload(FactCheckContentSource.source),
+            selectinload(FactCheckContent.fact_check).selectinload(FactCheck.investigation),
+            selectinload(FactCheckContent.fact_check).selectinload(FactCheck.contents),
+        )
+    )
+    content = result.scalar_one_or_none()
+    if content is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    investigation = content.fact_check.investigation
+    if investigation is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+    version_count = await session.scalar(
+        select(func.count())
+        .select_from(ArticleVersion)
+        .where(ArticleVersion.fact_check_content_id == content.id)
+    )
+    is_first_publication = int(version_count or 0) == 0
+    kind = (
+        ArticleVersionKind.INITIAL
+        if is_first_publication
+        else content.pending_version_kind or ArticleVersionKind.CORRECTION
+    )
+    snapshot = await _build_public_snapshot(
+        session,
+        fact_check=content.fact_check,
+        content=content,
+        kind=kind,
+        correction_note=None,
+        published_at=datetime.now(UTC),
+    )
+    issues = await check_readiness(
+        session,
+        fact_check=content.fact_check,
+        content=content,
+        investigation=investigation,
+    )
+    return PublishPreviewResponse(
+        snapshot=snapshot,
+        kind=kind,
+        revision_number=content.current_revision_number,
+        correction_note_required=not is_first_publication,
+        readiness_issues=issues,
     )
 
 

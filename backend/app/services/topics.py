@@ -117,6 +117,26 @@ async def patch_topic(
     return _topic_response(topic)
 
 
+async def list_fact_check_topics(
+    session: AsyncSession,
+    *,
+    fact_check: FactCheck,
+) -> TopicListResponse:
+    rows = (
+        (
+            await session.execute(
+                select(Topic)
+                .join(FactCheckTopic, FactCheckTopic.topic_id == Topic.id)
+                .where(FactCheckTopic.fact_check_id == fact_check.id)
+                .order_by(Topic.position.asc(), Topic.slug.asc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return TopicListResponse(items=[_topic_response(row) for row in rows])
+
+
 async def replace_fact_check_topics(
     session: AsyncSession,
     *,

@@ -58,6 +58,7 @@ class Action(StrEnum):
     AUDIT_VIEW = "audit.view"
     TOPIC_MANAGE = "topic.manage"
     FACTCHECK_TOPICS_EDIT = "factcheck.topics_edit"
+    STAFF_DIRECTORY_VIEW = "staff.directory_view"
 
 
 def _role_codes(user: User) -> set[RoleCode]:
@@ -272,6 +273,9 @@ def can(
 
     if action == Action.TOPIC_MANAGE:
         return is_editor(user)
+
+    if action == Action.STAFF_DIRECTORY_VIEW:
+        return is_researcher(user) or is_editor(user)
 
     if action == Action.FACTCHECK_TOPICS_EDIT:
         if not isinstance(obj, FactCheck):

@@ -2,41 +2,10 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
+import { installEditorialApi } from "../test/editorialApi";
 import { installFetch, requestUrl } from "../test/fetch";
-import { CSRF, EDITOR } from "../test/fixtures";
+import { CSRF } from "../test/fixtures";
 import { renderApp } from "../test/renderApp";
-
-function sessionFetch(
-  handlers?: (url: string, init: RequestInit) => { status: number; body?: unknown } | null,
-) {
-  let signedOut = false;
-  return installFetch((url, init) => {
-    const method = (init.method ?? "GET").toUpperCase();
-    const extra = handlers?.(url, init);
-    if (extra) {
-      return extra;
-    }
-    if (url.endsWith("/api/v1/me")) {
-      return signedOut
-        ? { status: 401, body: { detail: "Authentication required" } }
-        : { status: 200, body: EDITOR };
-    }
-    if (url.endsWith("/api/v1/auth/csrf")) {
-      return { status: 200, body: { csrf_token: CSRF } };
-    }
-    if (url.endsWith("/api/v1/editorial/status")) {
-      return { status: 200, body: { status: "ok", roles: ["editor"] } };
-    }
-    if (url.endsWith("/ready")) {
-      return { status: 200, body: { status: "ready" } };
-    }
-    if (url.endsWith("/api/v1/auth/logout") && method === "POST") {
-      signedOut = true;
-      return { status: 204 };
-    }
-    throw new Error(`Unhandled ${method} ${url}`);
-  });
-}
 
 describe("protected editorial shell", () => {
   it("shows a loading state and then the login page for an anonymous visitor", async () => {
@@ -59,15 +28,15 @@ describe("protected editorial shell", () => {
   });
 
   it("shows the editorial shell for a signed-in staff member", async () => {
-    sessionFetch();
+    installEditorialApi();
     renderApp("/editorial/inbox");
     expect(await screen.findByRole("heading", { name: "Inbox" })).toBeInTheDocument();
-    expect(screen.getByText("The inbox will be available in a later phase.")).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /river stops flowing/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Investigations" })).toBeInTheDocument();
   });
 
   it("logs out with the CSRF header and rejects the signed-in shell afterward", async () => {
-    const fetchMock = sessionFetch();
+    const { fetchMock } = installEditorialApi();
     const user = userEvent.setup();
     renderApp("/editorial");
     await user.click(await screen.findByRole("button", { name: "Log out" }));

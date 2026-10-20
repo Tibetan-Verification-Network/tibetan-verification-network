@@ -1,4 +1,6 @@
-export const en = {
+import { editorialEn } from "./editorial.en";
+
+export const publicEn = {
   "product.name": "Tibetan Verification Network",
   "product.tagline": "Evidence before conclusion",
   skip: "Skip to main content",
@@ -213,10 +215,6 @@ export const en = {
   "editorial.roles": "Roles",
   "editorial.protectedOk": "The editorial service accepted this session.",
   "editorial.protectedFail": "The editorial service could not be reached.",
-  "placeholder.inbox": "The inbox will be available in a later phase.",
-  "placeholder.investigations": "Investigation workspaces will be available in a later phase.",
-  "placeholder.drafts": "Drafts will be available in a later phase.",
-  "placeholder.archive": "The archive will be available in a later phase.",
   "notFound.title": "Page not found",
   "notFound.body": "That page does not exist.",
   "footer.note": "Staff accounts are issued by invitation. There is no public registration.",
@@ -226,4 +224,8 @@ export const en = {
   "role.approver": "Approver",
 } as const;
 
+export const en = { ...publicEn, ...editorialEn } as const;
+
 export type MessageKey = keyof typeof en;
+/** Keys the Tibetan catalog must cover. Staff-area keys fall back to English. */
+export type PublicMessageKey = keyof typeof publicEn;

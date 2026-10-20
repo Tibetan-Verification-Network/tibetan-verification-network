@@ -1,10 +1,10 @@
-import type { MessageKey } from "./en";
+import type { MessageKey, PublicMessageKey } from "./en";
 
 /**
  * Provisional Tibetan copy. The editorial team can revise this catalog
  * without changing components. Unresolved wording is tracked as a later-phase decision.
  */
-export const bo: Record<MessageKey, string> = {
+export const bo: Record<PublicMessageKey, string> & Partial<Record<MessageKey, string>> = {
   "product.name": "Tibetan Verification Network",
   "product.tagline": "མཇུག་སྡོམ་མ་བཞག་གོང་ལ་དཔང་རྟགས།",
   skip: "གཙོ་བོའི་ནང་དོན་ལ་མཆོང་།",
@@ -220,10 +220,6 @@ export const bo: Record<MessageKey, string> = {
   "editorial.roles": "འགན་ཁུར།",
   "editorial.protectedOk": "རྩོམ་སྒྲིག་གི་སྲུང་སྐྱོབ་ལམ་བུས་ཐོ་ཁོངས་འདི་ཁས་བླངས།",
   "editorial.protectedFail": "རྩོམ་སྒྲིག་གི་ཞབས་ཞུ་ལ་འབྲེལ་མ་ཐུབ།",
-  "placeholder.inbox": "ཡིག་སྒམ་ཕྱིས་སུ་ཡོང་།",
-  "placeholder.investigations": "ཞིབ་འཇུག་གི་ལས་ཁུངས་ཕྱིས་སུ་ཡོང་།",
-  "placeholder.drafts": "མ་ཡིག་ཕྱིས་སུ་ཡོང་།",
-  "placeholder.archive": "ཡིག་ཚགས་ཕྱིས་སུ་ཡོང་།",
   "notFound.title": "ཤོག་ངོས་མ་རྙེད།",
   "notFound.body": "ཤོག་ངོས་དེ་མེད།",
   "footer.note": "ལས་བྱེད་ཀྱི་ཐོ་ཁོངས་གདན་ཞུས་སྤྲོད། སྤྱི་པའི་ཐོ་འགོད་མེད།",

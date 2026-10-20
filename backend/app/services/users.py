@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.enums import RoleCode
-from app.models.identity import User, UserRole
+from app.models.identity import Role, User, UserRole
 from app.services.audit import AuditEventType, record_audit_event
 from app.services.auth import revoke_all_user_sessions
 from app.services.invites import load_roles_by_codes
@@ -84,3 +84,35 @@ async def replace_user_roles(
     await db.flush()
     await db.refresh(user, attribute_names=["roles"])
     return user
+
+
+async def list_users_with_roles(db: AsyncSession, *, limit: int = 500) -> list[User]:
+    """All staff accounts, active and disabled, oldest first. Staff headcount is small."""
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.roles).selectinload(UserRole.role))
+        .order_by(User.created_at.asc(), User.id.asc())
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+
+
+async def list_assignable_staff(db: AsyncSession, *, limit: int = 500) -> list[User]:
+    """Active users holding an editorial role, for assignment pickers."""
+    editorial = (RoleCode.RESEARCHER, RoleCode.EDITOR, RoleCode.APPROVER)
+    result = await db.execute(
+        select(User)
+        .where(
+            User.is_active.is_(True),
+            User.disabled_at.is_(None),
+            User.id.in_(
+                select(UserRole.user_id)
+                .join(Role, Role.id == UserRole.role_id)
+                .where(Role.code.in_(editorial))
+            ),
+        )
+        .options(selectinload(User.roles).selectinload(UserRole.role))
+        .order_by(User.display_name.asc().nulls_last(), User.email.asc())
+        .limit(limit)
+    )
+    return list(result.scalars().all())

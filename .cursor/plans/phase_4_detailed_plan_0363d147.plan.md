@@ -4,13 +4,13 @@ overview: "Break Phase 4 (public bilingual experience and managed deployment) in
 todos:
   - id: p4-1-public-api-search
     content: "4.1: Topics schema and editorial routes, snapshot schema v2 with topics, public_articles projection written by the publication service, Tibetan/English normalization and trigram/syllable-token search with query plans, public factchecks/topics endpoints with caching, leak/404/projection tests"
-    status: pending
+    status: completed
   - id: p4-2-public-site
     content: "4.2: Locale-prefixed routes, Home/Search/Article/Versions/Topics/About/Submit pages, VerdictBadge and SanitizedHtml, translation pending and withdrawn states, Turnstile-ready submit form, Pages Function meta/sitemap/robots and security headers, Vitest+axe and initial Playwright public flows"
-    status: pending
+    status: completed
   - id: p4-3-editorial-ui
     content: "4.3: Editorial dashboard, inbox/triage, investigation workspace with evidence and archive, fact-check draft editor with preview, conflicts, readiness, review, approval queue, publish/correct/withdraw, version history, audit, topics and admin users; backend gap-fill endpoints with policy tests"
-    status: pending
+    status: completed
   - id: p4-4-e2e-deploy-gate
     content: "4.4: Full Playwright e2e and accessibility suite in CI, Tibetan device matrix, hosting pricing confirmation, staging and production on Cloudflare Pages + Render/Fly + Neon + R2, hardening, Sentry and uptime, nightly backups and proven restore drill, runbook and launch-decision updates"
     status: pending
@@ -121,6 +121,13 @@ flowchart LR
 
 **Exit check:** all public pages work in both locales with correct metadata, axe reports no violations, Playwright public flows pass locally and in CI.
 
+**Status: completed.** Implemented as specified, with these notes:
+- Playwright runs against a stack seeded by `backend/scripts/seed_e2e.py`; the CI `e2e` job is defined in `.github/workflows/ci.yml` and still needs its first CI run.
+- The Turnstile widget and `captcha_token` are wired in the form and accepted by the API, but server-side verification is not implemented (captcha stays off).
+- The API still returns the full body of withdrawn articles and old versions; the UI shows only the notice. Decide in 4.4 whether the API should drop it.
+- Tibetan UI strings and About/methodology copy are provisional and need editorial review. `connect-src` in `_headers` and the hostnames in `wrangler.toml` are placeholders until 4.4.
+- Backend `mypy` and `ruff` report errors (the new mypy ones are in `public_index.py` and `public_search.py` from 4.1). Fix them before the CI-green checkpoint tag.
+
 ---
 
 ## Sub-phase 4.3 — Editorial interface for the full non-AI workflow
@@ -148,6 +155,16 @@ flowchart LR
 - Playwright editorial flows for triage, evidence verification, drafting with a conflict, review, and approval.
 
 **Exit check:** a team of three seeded staff can take a submission to a published, corrected, and withdrawn article in both languages using only the UI.
+
+**Status: completed.** Implemented as specified, with these notes:
+- Gap-fill endpoints added, each with policy, inventory and permission tests (`backend/tests/test_editorial_ui_api.py`, `test_ui_hidden_controls.py`): `GET /editorial/staff`, `GET /admin/users`, `GET .../languages/{lang}/reviews`, `GET .../languages/{lang}/publish-preview`, `GET /editorial/factchecks/{id}/topics`, `GET /archive/documents/{id}/grants`, and a `claim_id` filter on `GET /investigations`. List responses gained display labels.
+- Audit history is embedded as a "Change history" panel on each object, not a standalone page.
+- Editorial copy (`src/i18n/locales/editorial.en.ts`) is English-only. The Tibetan catalogue covers the public site and the staff area falls back to English, so the staff-area Tibetan copy still needs writing and review.
+- The "Status of the other language" field on a draft is really that draft's own translation status. Readiness rejects `pending` once the other language is published and `published` before this one is. A correction copies the old value, so authors must reset it. The label and the default deserve a rework.
+- Found while running e2e: the CSRF token is per session and every tab that loads rotates it, so a second tab broke the first. The API client now refreshes the token and retries a mutation once after a CSRF refusal (safe, the server refuses before doing anything), and `EditorialError` shows the reload message for it.
+- The four-eyes rule shapes the UI flow: anyone who wrote a revision cannot mark it ready, so e2e has the editor review without editing, and the edit-conflict step uses the author in two tabs.
+- `frontend/e2e/editorial.spec.ts` runs the whole workflow (triage, team, evidence, both-language drafting with a conflict, review, approval, publication, correction, withdrawal, role-hidden pages) and passes locally. Run it with `E2E_BASE_URL=http://localhost:5173` against a Compose stack with the default `localhost` origins; `127.0.0.1` needs `VITE_API_BASE_URL` and CORS set to match, as in CI. It still needs its first CI run. `seed_e2e.py` now gives the three staff distinct display names.
+- Backend `mypy` and `ruff` still report the errors noted under 4.2. The new code follows the existing `language` typing pattern, so it adds a few of the same kind.
 
 ---
 

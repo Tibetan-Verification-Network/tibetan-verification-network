@@ -104,10 +104,24 @@ class FactCheckSummaryResponse(BaseModel):
     updated_at: datetime
 
 
+class FactCheckLanguageBriefResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    language: LanguageCode
+    editorial_status: LanguageEditorialStatus
+    title: str | None
+
+
+class FactCheckListItemResponse(FactCheckSummaryResponse):
+    """List row: the summary plus enough per-language state to render a work queue."""
+
+    languages: list[FactCheckLanguageBriefResponse]
+
+
 class FactCheckListResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    items: list[FactCheckSummaryResponse]
+    items: list[FactCheckListItemResponse]
     next_cursor: str | None
 
 
@@ -120,6 +134,7 @@ class FactCheckPatchRequest(BaseModel):
 class LanguageContentSummaryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    content_id: uuid.UUID
     language: LanguageCode
     editorial_status: LanguageEditorialStatus
     translation_status: TranslationStatus
@@ -257,6 +272,8 @@ class ApprovalQueueItemResponse(BaseModel):
 
     fact_check_id: uuid.UUID
     language: LanguageCode
+    title: str | None = None
+    public_slug: str | None = None
     current_revision_number: int
     updated_at: datetime
 
@@ -306,6 +323,24 @@ class WithdrawRequest(BaseModel):
 
     public_notice: str = Field(min_length=1, max_length=10000)
     internal_reason: str = Field(min_length=1, max_length=5000)
+
+
+class ReviewListResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[ReviewResponse]
+
+
+class PublishPreviewResponse(BaseModel):
+    """What publishing would freeze, built without writing anything."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    snapshot: PublicArticleSnapshot
+    kind: ArticleVersionKind
+    revision_number: int
+    correction_note_required: bool
+    readiness_issues: list[str]
 
 
 class ArticleVersionSummaryResponse(BaseModel):

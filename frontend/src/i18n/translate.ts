@@ -5,7 +5,7 @@ import { bo } from "./locales/bo";
 export const LOCALES = ["en", "bo"] as const;
 export type Locale = (typeof LOCALES)[number];
 
-const catalogs: Record<Locale, Record<MessageKey, string>> = { en, bo };
+const catalogs: Record<Locale, Partial<Record<MessageKey, string>>> = { en, bo };
 
 export function isLocale(value: string | null | undefined): value is Locale {
   return value === "en" || value === "bo";
@@ -33,7 +33,7 @@ export function translate(
   key: MessageKey,
   values?: Record<string, string>,
 ): string {
-  const template = messageOrFallback(catalogs[locale][key], catalogs.en[key]);
+  const template = messageOrFallback(catalogs[locale][key], en[key]);
   return formatMessage(template, values);
 }
 

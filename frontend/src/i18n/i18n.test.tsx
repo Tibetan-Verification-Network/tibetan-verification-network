@@ -6,9 +6,9 @@ import { describe, expect, it } from "vitest";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { I18nProvider } from "./I18nProvider";
 import { bo } from "./locales/bo";
-import { en } from "./locales/en";
+import { en, publicEn } from "./locales/en";
 import { LOCALE_STORAGE_KEY } from "./storage";
-import { chooseLocale, messageOrFallback } from "./translate";
+import { chooseLocale, messageOrFallback, translate } from "./translate";
 import { installAnonymousApi } from "../test/fetch";
 import { renderApp } from "../test/renderApp";
 
@@ -16,9 +16,15 @@ describe("locale catalogs", () => {
   it("keeps the product name and covers the same keys in both languages", () => {
     expect(en["product.name"]).toBe("Tibetan Verification Network");
     expect(bo["product.name"]).toBe("Tibetan Verification Network");
-    expect(Object.keys(bo).sort()).toEqual(Object.keys(en).sort());
+    expect(Object.keys(bo).sort()).toEqual(Object.keys(publicEn).sort());
     expect(JSON.stringify(en)).not.toContain("Tibetan FactCheck");
     expect(JSON.stringify(bo)).not.toContain("Tibetan FactCheck");
+  });
+
+  it("shows staff-area copy in English until a Tibetan translation exists", () => {
+    expect(Object.keys(en).length).toBeGreaterThan(Object.keys(publicEn).length);
+    expect(translate("bo", "review.title")).toBe(en["review.title"]);
+    expect(translate("bo", "approve.button", { revision: "3" })).toBe("Approve revision 3");
   });
 
   it("falls back to English when a translation is missing or blank", () => {
