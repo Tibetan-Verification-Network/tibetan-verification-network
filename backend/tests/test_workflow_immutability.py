@@ -11,14 +11,12 @@ from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.db.enums import (
-    ArticleVersionKind,
     LanguageCode,
     LanguageEditorialStatus,
     ReviewDecision,
     WorkflowStatus,
 )
 from app.models.publication import (
-    ArticleVersion,
     FactCheck,
     FactCheckContent,
     FactCheckContentRevision,

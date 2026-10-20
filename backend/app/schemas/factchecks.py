@@ -34,7 +34,7 @@ class PublicArticleSnapshot(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: int = 1
+    schema_version: int = Field(default=1, ge=1, le=2)
     language: LanguageCode
     public_slug: str
     title: str
@@ -48,6 +48,7 @@ class PublicArticleSnapshot(BaseModel):
     limitations_markdown: str
     limitations_html: str
     sources: list[PublicSnapshotSource]
+    topics: list[str] = Field(default_factory=list)
     translation_status: TranslationStatus
     attribution: str
     kind: ArticleVersionKind

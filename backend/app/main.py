@@ -16,6 +16,8 @@ from app.api.routes.factchecks import editorial_factcheck_router, investigation_
 from app.api.routes.health import router as health_router
 from app.api.routes.investigations import router as investigations_router
 from app.api.routes.me import router as me_router
+from app.api.routes.public_factchecks import router as public_factchecks_router
+from app.api.routes.public_topics import router as public_topics_router
 from app.api.routes.service import router as service_router
 from app.api.routes.submissions import router as submissions_router
 from app.core.config import Settings, get_settings
@@ -67,6 +69,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(admin_router, prefix="/api/v1")
     app.include_router(editorial_router, prefix="/api/v1")
     app.include_router(submissions_router, prefix="/api/v1")
+    app.include_router(public_factchecks_router, prefix="/api/v1")
+    app.include_router(public_topics_router, prefix="/api/v1")
     app.include_router(investigations_router, prefix="/api/v1")
     app.include_router(investigation_factcheck_router, prefix="/api/v1")
     app.include_router(editorial_factcheck_router, prefix="/api/v1")

@@ -54,6 +54,23 @@ async def test_public_submission_accepts_tibetan_text_and_returns_receipt_only(
     assert stored == 1
 
 
+async def test_public_submission_accepts_optional_captcha_token(
+    api_client: AsyncClient,
+    db_session_for_api: AsyncSession,
+    intake_settings,
+) -> None:
+    claim = "A claim submitted with a captcha token"
+    response = await api_client.post(
+        "/api/v1/submissions",
+        json={"claim_text": claim, "captcha_token": "token-from-widget"},
+    )
+    assert response.status_code == 202
+    stored = await db_session_for_api.scalar(
+        select(func.count()).select_from(Submission).where(Submission.claim_text == claim)
+    )
+    assert stored == 1
+
+
 async def test_honeypot_returns_receipt_without_persisting(
     api_client: AsyncClient,
     db_session_for_api: AsyncSession,

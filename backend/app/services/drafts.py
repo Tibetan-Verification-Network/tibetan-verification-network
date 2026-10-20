@@ -7,7 +7,6 @@ import json
 import re
 import unicodedata
 import uuid
-from datetime import UTC, datetime
 from typing import Any, cast
 
 from fastapi import HTTPException, status

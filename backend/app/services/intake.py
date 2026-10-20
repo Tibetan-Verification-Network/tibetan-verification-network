@@ -37,11 +37,11 @@ from app.schemas.intake import (
     TriageRequest,
 )
 from app.services.audit import AuditEventType, record_audit_event
+from app.services.captcha import CaptchaVerifier
+from app.services.rate_limit import increment_rate_limit
 from app.workflow.engine import apply_submission_status
 from app.workflow.exceptions import InvalidTransitionError, TransitionBlockedError
 from app.workflow.http import http_conflict_from_guard, http_conflict_from_transition
-from app.services.captcha import CaptchaVerifier
-from app.services.rate_limit import increment_rate_limit
 
 
 class IntakeValidationError(ValueError):
@@ -84,7 +84,7 @@ async def accept_public_submission(
     if payload.website.strip():
         return receipt_id
 
-    if not await captcha.verify(None, remote_ip=client_ip):
+    if not await captcha.verify(payload.captcha_token, remote_ip=client_ip):
         return receipt_id
 
     ip_allowed = await increment_rate_limit(

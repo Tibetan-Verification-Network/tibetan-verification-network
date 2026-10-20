@@ -18,11 +18,13 @@ export function AppFrame({
   navLabel,
   items,
   actions,
+  homeTo = "/",
   children,
 }: {
   navLabel: string;
   items: readonly NavItem[];
   actions?: ReactNode;
+  homeTo?: string;
   children: ReactNode;
 }) {
   const { t } = useI18n();
@@ -30,7 +32,7 @@ export function AppFrame({
     <div className="shell">
       <header className="site-header">
         <SkipLink />
-        <NavLink to="/" className="brand">
+        <NavLink to={homeTo} className="brand">
           <span className="mark" aria-hidden="true" />
           {t("product.name")}
         </NavLink>

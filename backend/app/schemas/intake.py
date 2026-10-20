@@ -28,6 +28,7 @@ class PublicSubmissionRequest(BaseModel):
     contact: SubmissionContactInput | None = None
     privacy_consent: bool = False
     website: str = Field(default="", max_length=200)
+    captcha_token: str | None = Field(default=None, max_length=4096)
 
     @model_validator(mode="after")
     def require_privacy_consent_for_contact(self) -> PublicSubmissionRequest:

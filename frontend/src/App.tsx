@@ -1,4 +1,8 @@
+import { QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
 import { BrowserRouter } from "react-router-dom";
+
+import { createQueryClient } from "./api/queryClient";
 
 import { AuthProvider } from "./auth/AuthProvider";
 import { Alert } from "./components/Alert";
@@ -29,13 +33,16 @@ function configuredBaseUrl(): string | null {
 }
 
 export function AppShell({ baseUrl }: { baseUrl: string }) {
+  const [queryClient] = useState(() => createQueryClient());
   return (
     <I18nProvider>
-      <AuthProvider baseUrl={baseUrl}>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider baseUrl={baseUrl}>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </AuthProvider>
+      </QueryClientProvider>
     </I18nProvider>
   );
 }

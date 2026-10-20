@@ -67,6 +67,9 @@ class AuditEventType:
     FACTCHECK_PUBLISHED = "factcheck.published"
     FACTCHECK_CORRECTION_STARTED = "factcheck.correction_started"
     FACTCHECK_WITHDRAWN = "factcheck.withdrawn"
+    TOPIC_CREATED = "topic.created"
+    TOPIC_UPDATED = "topic.updated"
+    FACTCHECK_TOPICS_UPDATED = "factcheck.topics_updated"
 
 
 def sanitize_payload(payload: dict[str, Any] | None) -> dict[str, Any] | None:

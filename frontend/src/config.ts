@@ -29,3 +29,13 @@ export function readApiBaseUrl(
   }
   return url.origin;
 }
+
+const TURNSTILE_SITE_KEY = /^[0-9A-Za-z_-]{8,100}$/;
+
+/** The Turnstile widget is shown only when a site key is configured. */
+export function readTurnstileSiteKey(
+  value: string | undefined = import.meta.env.VITE_TURNSTILE_SITE_KEY,
+): string | null {
+  const trimmed = value?.trim() ?? "";
+  return TURNSTILE_SITE_KEY.test(trimmed) ? trimmed : null;
+}

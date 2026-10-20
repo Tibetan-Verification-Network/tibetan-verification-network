@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -46,20 +47,22 @@ describe("language switcher", () => {
     expect(document.documentElement.lang).toBe("bo");
     expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe("bo");
     expect(screen.getByRole("button", { name: "བོད་ཡིག" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText(/བོད་ཀྱི་སྐོར/)).toBeInTheDocument();
+    expect(screen.getByText(bo["home.lede"])).toBeInTheDocument();
     expect(document.body.textContent).toMatch(/[\u0f00-\u0fff]/);
     first.unmount();
 
     renderApp("/");
     expect(document.documentElement.lang).toBe("bo");
-    expect(screen.getByText(/བོད་ཀྱི་སྐོར/)).toBeInTheDocument();
+    expect(screen.getByText(bo["home.lede"])).toBeInTheDocument();
   });
 
   it("changes language from the keyboard", async () => {
     const user = userEvent.setup();
     render(
       <I18nProvider>
-        <LanguageSwitcher />
+        <MemoryRouter>
+          <LanguageSwitcher />
+        </MemoryRouter>
       </I18nProvider>,
     );
     const tibetan = screen.getByRole("button", { name: "བོད་ཡིག" });

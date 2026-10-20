@@ -53,6 +53,8 @@ make check
 
 `make test` runs the API tests, including the Phase 1 smoke test, the frontend unit and accessibility tests, and the production frontend build. The build check rejects the old product name, remote font hosts, and connection strings in the generated files.
 
+Public pages are locale-prefixed (`/en/...`, `/bo/...`). Routes, Pages Functions, and the Playwright suite (`npm run e2e` in `frontend/`, run against a seeded stack) are described in [docs/local-development.md](docs/local-development.md).
+
 GitHub Actions runs the same checks in independent jobs. See [docs/testing.md](docs/testing.md).
 
 ## Documentation

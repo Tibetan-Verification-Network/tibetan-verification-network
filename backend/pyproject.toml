@@ -22,6 +22,7 @@ dependencies = [
 [project.scripts]
 tvn-api = "app.main:run"
 tvn-bootstrap-admin = "app.cli.bootstrap:main"
+tvn-rebuild-public-index = "app.cli.rebuild_public_index:main"
 
 [dependency-groups]
 dev = [

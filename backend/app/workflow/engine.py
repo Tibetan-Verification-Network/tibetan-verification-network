@@ -123,9 +123,7 @@ async def _apply_submission_transition(
         )
 
     submission.workflow_status = to_status
-    if to_status == WorkflowStatus.REJECTED:
-        submission.triage_note = reason
-    elif to_status == WorkflowStatus.ON_HOLD:
+    if to_status == WorkflowStatus.REJECTED or to_status == WorkflowStatus.ON_HOLD:
         submission.triage_note = reason
 
     payload: dict[str, Any] = {

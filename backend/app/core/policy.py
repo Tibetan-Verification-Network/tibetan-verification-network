@@ -56,6 +56,8 @@ class Action(StrEnum):
     CORRECTION_START = "factcheck.correction_start"
     WITHDRAW = "factcheck.withdraw"
     AUDIT_VIEW = "audit.view"
+    TOPIC_MANAGE = "topic.manage"
+    FACTCHECK_TOPICS_EDIT = "factcheck.topics_edit"
 
 
 def _role_codes(user: User) -> set[RoleCode]:
@@ -267,6 +269,14 @@ def can(
 
     if action == Action.AUDIT_VIEW:
         return is_editor(user) or is_approver(user)
+
+    if action == Action.TOPIC_MANAGE:
+        return is_editor(user)
+
+    if action == Action.FACTCHECK_TOPICS_EDIT:
+        if not isinstance(obj, FactCheck):
+            return False
+        return is_editor(user) and _factcheck_view_allowed(user, obj)
 
     return False  # type: ignore[unreachable]
 

@@ -119,9 +119,33 @@ The frontend dev server reads `VITE_API_BASE_URL` when its container or `npm run
 
 ## What the UI includes
 
-- `/` public home, including API readiness
-- `/fact-checks`, `/submit`, and `/about` are navigation placeholders
-- `/login` and `/activate` for staff
-- `/editorial` and its inbox, investigation, draft, and archive placeholders
+- `/` redirects to `/en` or `/bo` using the stored language, then the browser language, then English. Unprefixed public paths such as `/fact-checks` redirect the same way.
+- Public pages under `/:locale` (`bo` or `en`): home, `fact-checks` (search), `fact-checks/:slug`, `fact-checks/:slug/versions/:n`, `topics`, `topics/:slug`, `about`, and `submit`.
+- `/login`, `/activate`, and `/editorial` (inbox, investigation, draft, and archive placeholders) are staff routes and are not prefixed.
 
-Public claim submission, editorial records, and account registration are not implemented. `/register` renders the not-found page.
+`/register` renders the not-found page. The Tibetan interface copy and the About page text are provisional until editors review them.
+
+Set `VITE_TURNSTILE_SITE_KEY` to show the Cloudflare Turnstile widget on the submit form. Leave it empty locally. The API ignores the token until `SUBMISSION_CAPTCHA_ENABLED` is on and a verifier is configured.
+
+## Pages Functions and headers
+
+`frontend/functions/` holds Cloudflare Pages Functions that run only on Cloudflare, not in the Vite dev server:
+
+- `_middleware.ts` rewrites the HTML shell of public pages with `lang`, title, description, canonical, hreflang, and Open Graph tags. Withdrawn articles and old versions are `noindex`. Unknown articles get HTTP 404.
+- `sitemap.xml.ts` and `robots.txt.ts` (which disallows `/editorial`).
+
+They read `API_BASE_URL` and `SITE_ORIGIN` from `frontend/wrangler.toml`. The hostnames there and the `connect-src` host in `frontend/public/_headers` are placeholders until deployment (sub-phase 4.4). `npm run build` followed by `node scripts/verify-dist.mjs` checks the headers file and that the built page has no inline script.
+
+## End-to-end tests
+
+Playwright tests in `frontend/e2e/` run against a running stack that has been seeded with public fact-checks:
+
+```sh
+make start
+make migrate
+cd backend && uv run python scripts/seed_e2e.py   # idempotent
+cd ../frontend && npx playwright install chromium
+npm run e2e
+```
+
+`seed_e2e.py` creates three staff users and three fact-checks (`e2e-river` in both languages, `e2e-pending` English only with a pending Tibetan translation, and `e2e-withdrawn`) by calling the real editorial workflow in-process. Do not run it against a database with real content. To use a throwaway database and different ports, point `DATABASE_URL` at it for `alembic` and the seed script, start the API with `API_PORT`, start Vite with `VITE_API_BASE_URL`, and set `E2E_BASE_URL`.

@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import uuid
-
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.editorial_rules import MIN_PUBLIC_SOURCES
-from app.db.enums import LanguageCode, PublicVerdict, WorkflowStatus
+from app.db.enums import LanguageCode, WorkflowStatus
 from app.models.publication import FactCheck, FactCheckContent, FactCheckContentSource
 from app.models.research import EvidenceItem, Source
 from app.workflow.readiness import check_readiness, translation_status_issues

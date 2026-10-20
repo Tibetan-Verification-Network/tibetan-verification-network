@@ -43,6 +43,7 @@ from app.services.drafts import (
     _revision_checksum,
     _revision_fields_snapshot,
 )
+from app.services.public_index import topic_slugs_for_fact_check, upsert_public_article
 from app.services.reviews import (
     _load_locked_content,
     _readiness_http_exception,
@@ -147,7 +148,9 @@ async def _build_public_snapshot(
 
     analysis_md = content.analysis_markdown or ""
     limitations_md = content.limitations_markdown or ""
+    topic_slugs = await topic_slugs_for_fact_check(session, fact_check_id=fact_check.id)
     return PublicArticleSnapshot(
+        schema_version=2,
         language=LanguageCode(content.language.value),
         public_slug=fact_check.public_slug,
         title=content.title or "",
@@ -161,6 +164,7 @@ async def _build_public_snapshot(
         limitations_markdown=limitations_md,
         limitations_html=render_sanitized_html(limitations_md),
         sources=sources,
+        topics=topic_slugs,
         translation_status=content.translation_status,
         attribution=PUBLICATION_ATTRIBUTION,
         kind=kind,
@@ -330,6 +334,8 @@ async def publish_language(
     except InvalidTransitionError as exc:
         raise http_conflict_from_transition(exc) from exc
 
+    await upsert_public_article(session, content=content, version=version, snapshot=snapshot)
+
     await record_audit_event(
         session,
         event_type=AuditEventType.FACTCHECK_PUBLISHED,
@@ -428,7 +434,9 @@ async def withdraw_language(
         )
 
     content = await _load_locked_content(session, fact_check_id=fact_check.id, language=language)
+    live_version_id = content.live_version_id
     await _lock_fact_check(session, fact_check.id)
+    await session.refresh(content, attribute_names=["editorial_status", "live_version_id"])
 
     if content.editorial_status != LanguageEditorialStatus.PUBLISHED:
         raise HTTPException(
@@ -439,7 +447,10 @@ async def withdraw_language(
             },
         )
 
-    live = content.live_version
+    resolved_live_id = content.live_version_id or live_version_id
+    live = None
+    if resolved_live_id is not None:
+        live = await session.get(ArticleVersion, resolved_live_id)
     if live is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -490,6 +501,8 @@ async def withdraw_language(
         )
     except InvalidTransitionError as exc:
         raise http_conflict_from_transition(exc) from exc
+
+    await upsert_public_article(session, content=content, version=version, snapshot=snapshot)
 
     await record_audit_event(
         session,

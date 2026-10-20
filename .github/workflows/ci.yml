@@ -132,3 +132,67 @@ jobs:
       - name: Build
         working-directory: frontend
         run: npm run build && node scripts/verify-dist.mjs
+
+  e2e:
+    name: Public site end-to-end
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: [backend-test, frontend-check]
+    env:
+      TVN_ENV_FILE: ""
+      ENVIRONMENT: development
+      LOG_LEVEL: warning
+      DATABASE_URL: postgresql://tvn:tvn_local_dev@127.0.0.1:5432/tvn
+      CORS_ORIGINS: http://127.0.0.1:5173,http://localhost:5173
+      STORAGE_ENDPOINT_URL: http://127.0.0.1:9000
+      STORAGE_BUCKET: tvn-archive
+      STORAGE_ACCESS_KEY_ID: minioadmin
+      STORAGE_SECRET_ACCESS_KEY: minioadmin
+      STORAGE_REGION: us-east-1
+      VITE_API_BASE_URL: http://127.0.0.1:8000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.28"
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install backend
+        working-directory: backend
+        run: uv sync --frozen --all-groups
+      - name: Install frontend
+        working-directory: frontend
+        run: npm ci
+      - name: Start database and storage
+        run: docker compose up -d --wait postgres minio
+      - name: Migrate and seed
+        working-directory: backend
+        run: |
+          uv run alembic upgrade head
+          uv run python scripts/seed_e2e.py
+      - name: Start API and frontend
+        run: docker compose up -d --build --wait api frontend
+      - name: Install Playwright browser
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright
+        working-directory: frontend
+        run: npm run e2e
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          retention-days: 7
+      - name: Compose logs
+        if: failure()
+        run: docker compose logs --no-color --tail=200

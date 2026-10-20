@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps.access import require_policy_action
 from app.api.routes.editorial_intake import router as editorial_intake_router
+from app.api.routes.editorial_topics import router as editorial_topics_router
 from app.core.deps import get_db_session
 from app.core.permissions import RequireStaff
 from app.core.policy import Action
@@ -20,6 +21,7 @@ from app.services.reviews import list_approval_queue
 
 router = APIRouter(prefix="/editorial", tags=["editorial"])
 router.include_router(editorial_intake_router)
+router.include_router(editorial_topics_router)
 
 RequireApprovalQueue = Annotated[
     AuthenticatedUser,

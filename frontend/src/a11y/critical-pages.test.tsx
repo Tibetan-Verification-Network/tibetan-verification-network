@@ -12,7 +12,7 @@ describe("critical page accessibility", () => {
   it("has no detectable violations on the public home page", async () => {
     installAnonymousApi();
     renderApp("/");
-    expect(await screen.findByRole("status")).toHaveTextContent("API status: Ready");
+    expect(await screen.findByText("Does the river run dry every winter?")).toBeInTheDocument();
     await expectAccessible();
   });
 

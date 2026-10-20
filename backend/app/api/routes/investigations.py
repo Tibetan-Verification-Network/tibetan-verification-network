@@ -38,8 +38,8 @@ from app.services.evidence import (
     patch_evidence,
     patch_source,
     reorder_evidence,
-    verify_evidence,
     reorder_sources,
+    verify_evidence,
 )
 from app.services.investigations import (
     add_assignment,

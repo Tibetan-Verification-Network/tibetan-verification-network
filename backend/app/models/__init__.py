@@ -5,6 +5,7 @@ from app.models.assignments import InvestigationAssignment
 from app.models.audit import AuditEvent
 from app.models.identity import AuthSession, Role, StaffInvite, StaffInviteRole, User, UserRole
 from app.models.intake import Claim, Submission, SubmissionContact
+from app.models.public_index import PublicArticle
 from app.models.publication import (
     ArticleVersion,
     FactCheck,
@@ -15,6 +16,7 @@ from app.models.publication import (
 )
 from app.models.rate_limit import RateLimitCounter
 from app.models.research import EvidenceItem, Investigation, ResearchRun, Source
+from app.models.topics import FactCheckTopic, Topic
 
 __all__ = [
     "AccessGrant",
@@ -28,8 +30,10 @@ __all__ = [
     "FactCheckContent",
     "FactCheckContentRevision",
     "FactCheckContentSource",
+    "FactCheckTopic",
     "Investigation",
     "InvestigationAssignment",
+    "PublicArticle",
     "RateLimitCounter",
     "ResearchRun",
     "Review",
@@ -39,6 +43,7 @@ __all__ = [
     "StaffInviteRole",
     "Submission",
     "SubmissionContact",
+    "Topic",
     "User",
     "UserRole",
 ]

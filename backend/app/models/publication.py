@@ -35,6 +35,7 @@ from app.db.types import pg_enum
 
 if TYPE_CHECKING:
     from app.models.research import Investigation, Source
+    from app.models.topics import FactCheckTopic
 
 
 class FactCheck(UUIDPrimaryKeyMixin, TimestampMixin, UserAuditMixin, Base):
@@ -59,6 +60,10 @@ class FactCheck(UUIDPrimaryKeyMixin, TimestampMixin, UserAuditMixin, Base):
 
     investigation: Mapped[Investigation | None] = relationship(back_populates="fact_check")
     contents: Mapped[list[FactCheckContent]] = relationship(
+        back_populates="fact_check",
+        cascade="all, delete-orphan",
+    )
+    topic_links: Mapped[list[FactCheckTopic]] = relationship(
         back_populates="fact_check",
         cascade="all, delete-orphan",
     )

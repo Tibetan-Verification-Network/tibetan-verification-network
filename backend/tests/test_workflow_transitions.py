@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from datetime import UTC, datetime
-
 from app.db.enums import (
     ArticleVersionKind,
-    LanguageEditorialStatus,
     LanguageCode,
+    LanguageEditorialStatus,
     ReviewDecision,
     RoleCode,
     WorkflowStatus,

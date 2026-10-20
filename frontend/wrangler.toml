@@ -1,0 +1,12 @@
+# Cloudflare Pages project: static SPA from dist/ plus Pages Functions from functions/.
+# Replace the example hostnames when the domain is registered (docs/hosting.md).
+name = "tvn-frontend"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-10-01"
+
+[env.production.vars]
+API_BASE_URL = "https://api.example.org"
+SITE_ORIGIN = "https://example.org"
+
+[env.preview.vars]
+API_BASE_URL = "https://staging-api.example.org"

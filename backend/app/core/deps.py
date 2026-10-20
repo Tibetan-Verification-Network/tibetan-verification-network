@@ -1,7 +1,6 @@
 """Shared FastAPI dependencies."""
 
 from collections.abc import AsyncIterator
-
 from typing import cast
 
 from fastapi import HTTPException, Request, status

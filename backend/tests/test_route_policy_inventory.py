@@ -7,6 +7,15 @@ from app.main import create_app
 from tests.helpers import settings_for_tests
 
 STAFF_ONLY_ROUTES = frozenset({("GET", "/api/v1/editorial/status")})
+PUBLIC_READ_ROUTES = frozenset(
+    {
+        ("GET", "/api/v1/factchecks"),
+        ("GET", "/api/v1/factchecks/{slug}"),
+        ("GET", "/api/v1/factchecks/{slug}/versions/{version_number}"),
+        ("GET", "/api/v1/topics"),
+        ("GET", "/api/v1/topics/{slug}"),
+    }
+)
 
 
 def test_editorial_and_investigation_routes_use_policy_loaders() -> None:
@@ -28,7 +37,7 @@ def test_editorial_and_investigation_routes_use_policy_loaders() -> None:
             if method in {"HEAD", "OPTIONS"}:
                 continue
             key = (method, path)
-            if key in STAFF_ONLY_ROUTES:
+            if key in STAFF_ONLY_ROUTES or key in PUBLIC_READ_ROUTES:
                 continue
             if not route_has_policy_loader(route):
                 missing.append(f"{method} {path}")

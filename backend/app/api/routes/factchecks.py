@@ -40,6 +40,7 @@ from app.schemas.factchecks import (
     SubmitForReviewResponse,
     WithdrawRequest,
 )
+from app.schemas.topics import FactCheckTopicsReplaceRequest, TopicListResponse
 from app.services.auth import AuthenticatedUser
 from app.services.drafts import (
     create_fact_check,
@@ -68,6 +69,7 @@ from app.services.reviews import (
     request_changes,
     submit_for_review,
 )
+from app.services.topics import replace_fact_check_topics
 
 investigation_factcheck_router = APIRouter(tags=["factchecks"])
 
@@ -499,3 +501,20 @@ async def language_version_get(
         language=language.value,
         version_number=version_number,
     )
+
+
+@editorial_factcheck_router.put(
+    "/{fact_check_id}/topics",
+    response_model=TopicListResponse,
+)
+async def fact_check_topics_replace(
+    fact_check: Annotated[
+        FactCheck,
+        Depends(load_fact_check(Action.FACTCHECK_TOPICS_EDIT)),
+    ],
+    auth: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    body: FactCheckTopicsReplaceRequest,
+    _: Annotated[None, Depends(require_csrf_for_cookie_mutations)],
+) -> TopicListResponse:
+    return await replace_fact_check_topics(db, actor=auth.user, fact_check=fact_check, body=body)

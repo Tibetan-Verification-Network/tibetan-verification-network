@@ -2,18 +2,20 @@ import { Link, Outlet } from "react-router-dom";
 
 import { useAuth } from "../auth/useAuth";
 import { useI18n } from "../i18n/useI18n";
+import { useLocalePath } from "../i18n/useLocalePath";
 import { AppFrame, type NavItem } from "./AppFrame";
-
-const PUBLIC_NAV: readonly NavItem[] = [
-  { to: "/", label: "nav.home", end: true },
-  { to: "/fact-checks", label: "nav.factChecks" },
-  { to: "/submit", label: "nav.submit" },
-  { to: "/about", label: "nav.about" },
-];
 
 export function PublicLayout() {
   const { t } = useI18n();
   const { status } = useAuth();
+  const to = useLocalePath();
+  const items: readonly NavItem[] = [
+    { to: to(), label: "nav.home", end: true },
+    { to: to("fact-checks"), label: "nav.factChecks" },
+    { to: to("topics"), label: "nav.topics" },
+    { to: to("submit"), label: "nav.submit" },
+    { to: to("about"), label: "nav.about" },
+  ];
   const actions =
     status === "authenticated" ? (
       <Link className="text-link" to="/editorial">
@@ -26,7 +28,7 @@ export function PublicLayout() {
     );
 
   return (
-    <AppFrame navLabel={t("nav.publicLabel")} items={PUBLIC_NAV} actions={actions}>
+    <AppFrame navLabel={t("nav.publicLabel")} items={items} actions={actions} homeTo={to()}>
       <Outlet />
     </AppFrame>
   );

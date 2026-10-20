@@ -4,6 +4,11 @@ from httpx import AsyncClient
 
 ALLOWED_PUBLIC_PATHS = {
     "/api/v1/submissions",
+    "/api/v1/factchecks",
+    "/api/v1/factchecks/{slug}",
+    "/api/v1/factchecks/{slug}/versions/{version_number}",
+    "/api/v1/topics",
+    "/api/v1/topics/{slug}",
 }
 ALLOWED_EDITORIAL_PATHS = {
     "/api/v1/editorial/approval-queue",
@@ -52,6 +57,11 @@ ALLOWED_FACTCHECK_EDITORIAL_PATHS = {
     "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/withdraw",
     "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/versions",
     "/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/versions/{version_number}",
+    "/api/v1/editorial/factchecks/{fact_check_id}/topics",
+}
+ALLOWED_EDITORIAL_TOPIC_PATHS = {
+    "/api/v1/editorial/topics",
+    "/api/v1/editorial/topics/{topic_id}",
 }
 ALLOWED_ARCHIVE_PATHS = {
     "/api/v1/archive/documents",
@@ -77,6 +87,11 @@ async def test_openapi_editorial_surface_matches_phase_two(client: AsyncClient) 
             continue
         if "/editorial/factchecks" in path:
             assert path in ALLOWED_FACTCHECK_EDITORIAL_PATHS
+            continue
+        if "/editorial/topics" in path:
+            assert path in ALLOWED_EDITORIAL_TOPIC_PATHS
+            continue
+        if path in ALLOWED_PUBLIC_PATHS:
             continue
         if "/editorial" in path:
             assert path in ALLOWED_EDITORIAL_PATHS

@@ -39,7 +39,7 @@ describe("public shell", () => {
     renderApp("/");
     expect(screen.queryByRole("button", { name: "Menu" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "About" })).toBeVisible();
-    expect(await screen.findByRole("status")).toHaveTextContent("API status: Ready");
+    expect(await screen.findByText("Does the river run dry every winter?")).toBeInTheDocument();
   });
 
   it("opens the narrow menu and reaches its links from the keyboard", async () => {
