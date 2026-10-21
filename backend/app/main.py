@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.routes.admin import router as admin_router
 from app.api.routes.archive import archive_router, investigation_archive_router
@@ -25,6 +26,7 @@ from app.core.constants import API_VERSION, PRODUCT_NAME
 from app.core.logging import build_log_config, configure_logging
 from app.core.middleware import RequestIdMiddleware
 from app.core.security import CSRF_HEADER_NAME
+from app.core.sentry import init_sentry
 from app.core.submission_middleware import SubmissionBodyLimitMiddleware
 from app.db.lifecycle import database_lifespan
 
@@ -33,6 +35,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     """Build an API instance. Missing or invalid settings raise before it serves traffic."""
     resolved = settings if settings is not None else get_settings()
     configure_logging(resolved.log_level)
+    init_sentry(resolved)
     expose_docs = resolved.environment != "production"
 
     @asynccontextmanager
@@ -49,6 +52,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = resolved
+    if resolved.trusted_hosts:
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=resolved.trusted_hosts)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=resolved.cors_origins,
@@ -92,7 +97,8 @@ def run() -> None:
         host=settings.api_host,
         port=settings.api_port,
         access_log=False,
-        proxy_headers=False,
+        proxy_headers=settings.proxy_headers,
+        forwarded_allow_ips="*" if settings.proxy_headers else None,
         log_config=build_log_config(settings.log_level),
     )
 

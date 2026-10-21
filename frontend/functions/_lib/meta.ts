@@ -101,10 +101,12 @@ export function staticMeta(
 ): PageMeta {
   const catalog = CATALOGS[route.locale];
   const keys = STATIC_KEYS[route.section];
+  const titleText = catalog[keys.title] ?? "";
+  const descriptionText = catalog[keys.description] ?? "";
   return {
     lang: route.locale,
-    title: withSite(route.locale, catalog[keys.title]),
-    description: truncate(catalog[keys.description]),
+    title: withSite(route.locale, titleText),
+    description: truncate(descriptionText),
     canonical: `${origin}${pathFor(route)}`,
     alternates: alternatesFor(origin, route, ["en", "bo"]),
     ogType: "website",

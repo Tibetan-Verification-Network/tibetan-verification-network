@@ -59,6 +59,11 @@ class Settings(BaseSettings):
     submission_duplicate_similarity_threshold: float = Field(default=0.35, ge=0.1, le=0.99)
     submission_submitter_hmac_key: SecretStr = SecretStr("local-dev-submitter-hmac-key")
     submission_captcha_enabled: bool = False
+    turnstile_secret_key: SecretStr | None = None
+    trust_forwarded_for: bool = False
+    trusted_hosts: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    proxy_headers: bool = False
+    sentry_dsn: SecretStr | None = None
     storage_endpoint_url: str | None = None
     storage_bucket: str = "tvn-archive-local"
     storage_access_key_id: SecretStr = SecretStr("minioadmin")
@@ -98,9 +103,9 @@ class Settings(BaseSettings):
             raise ValueError("DATABASE_URL must include a database name")
         return value
 
-    @field_validator("cors_origins", mode="before")
+    @field_validator("cors_origins", "trusted_hosts", mode="before")
     @classmethod
-    def split_cors_origins(cls, value: object) -> object:
+    def split_comma_separated(cls, value: object) -> object:
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
@@ -144,6 +149,8 @@ class Settings(BaseSettings):
             raise ValueError("Production storage bucket must not use a default placeholder name")
         if self.storage_access_key_id.get_secret_value() == "minioadmin":
             raise ValueError("Production requires dedicated storage credentials")
+        if self.submission_captcha_enabled and self.turnstile_secret_key is None:
+            raise ValueError("Production captcha requires TURNSTILE_SECRET_KEY")
         return self
 
 

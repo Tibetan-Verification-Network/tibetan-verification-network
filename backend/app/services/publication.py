@@ -136,8 +136,10 @@ async def _build_public_snapshot(
     for link in ordered_links:
         source = link.source
         if source is None:
-            await session.refresh(link, attribute_names=["source"])
-            source = link.source
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"code": "missing_source", "message": "source link has no source row"},
+            )
         sources.append(
             PublicSnapshotSource(
                 title=source.title,

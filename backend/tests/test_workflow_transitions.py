@@ -188,7 +188,7 @@ async def test_investigation_allowed_transitions_succeed(
             investigation.hold_from_status = to_status
         await db_session.flush()
 
-    resolved_to = to_status if from_status != WorkflowStatus.ON_HOLD else to_status
+    resolved_to = to_status
     updated = await apply_transition(
         db_session,
         subject=TransitionSubject.INVESTIGATION,

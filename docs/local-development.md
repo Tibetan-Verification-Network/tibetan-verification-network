@@ -134,11 +134,11 @@ Set `VITE_TURNSTILE_SITE_KEY` to show the Cloudflare Turnstile widget on the sub
 - `_middleware.ts` rewrites the HTML shell of public pages with `lang`, title, description, canonical, hreflang, and Open Graph tags. Withdrawn articles and old versions are `noindex`. Unknown articles get HTTP 404.
 - `sitemap.xml.ts` and `robots.txt.ts` (which disallows `/editorial`).
 
-They read `API_BASE_URL` and `SITE_ORIGIN` from `frontend/wrangler.toml`. The hostnames there and the `connect-src` host in `frontend/public/_headers` are placeholders until deployment (sub-phase 4.4). `npm run build` followed by `node scripts/verify-dist.mjs` checks the headers file and that the built page has no inline script.
+They read `API_BASE_URL` and `SITE_ORIGIN` from `frontend/wrangler.toml`. Replace example hostnames and the `connect-src` API host in `frontend/public/_headers` when you deploy (see [hosting.md](hosting.md)). `npm run build` followed by `node scripts/verify-dist.mjs` checks the headers file and that the built page has no inline script.
 
 ## End-to-end tests
 
-Playwright tests in `frontend/e2e/` run against a running stack that has been seeded with public fact-checks:
+Playwright tests in `frontend/e2e/` run against a running stack that has been seeded with public fact-checks. Specs include the public site, keyboard navigation, public/private separation, and the full editorial workflow (`editorial.spec.ts`). See [accessibility-testing.md](accessibility-testing.md).
 
 ```sh
 make start

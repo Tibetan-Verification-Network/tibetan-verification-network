@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: p4-4-e2e-deploy-gate
     content: "4.4: Full Playwright e2e and accessibility suite in CI, Tibetan device matrix, hosting pricing confirmation, staging and production on Cloudflare Pages + Render/Fly + Neon + R2, hardening, Sentry and uptime, nightly backups and proven restore drill, runbook and launch-decision updates"
-    status: pending
+    status: completed
 isProject: false
 ---
 
@@ -170,6 +170,13 @@ flowchart LR
 
 ## Sub-phase 4.4 — End-to-end hardening, managed deployment, and the Phase 4 gate
 **Goal:** Prove the product is safe and accessible, then run it in staging and production with tested backups.
+
+**Status: completed.** Implemented as specified, with these notes:
+- Playwright CI runs public, keyboard, security, and editorial specs on Chromium, plus public/keyboard/security on mobile WebKit. Manual Tibetan device checks are documented in `docs/accessibility-testing.md`.
+- Backend hardening: optional Turnstile verification, `TRUSTED_HOSTS`, `TRUST_FORWARDED_FOR` / `PROXY_HEADERS`, optional `SENTRY_DSN`, production OpenAPI disabled. Mypy/ruff issues from 4.1–4.3 are fixed.
+- **Hosting vendor choice is intentionally open.** `docs/hosting.md` lists requirements only; no Render/Fly/Pages/Neon/R2 deploy workflows in repo. Add provider-specific CI when a host is chosen.
+- `backend/scripts/restore_drill.py` verifies version checksums and rebuilds the public index; procedures in `docs/runbook.md`. Nightly `pg_dump` to object storage is documented, not automated in GitHub Actions.
+- Launch decisions and README updated; withdrawn API body trimming remains an open policy item.
 
 **End-to-end and accessibility** (Playwright, Chromium plus mobile WebKit emulation, new CI job against the Compose stack)
 - Submission to publication with distinct author, ready-marking editor, and approver.

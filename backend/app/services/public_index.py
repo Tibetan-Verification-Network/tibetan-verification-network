@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -115,7 +115,7 @@ async def upsert_public_article(
 
 async def rebuild_public_index(session: AsyncSession) -> int:
     """Rebuild all public_articles rows from live snapshots. Returns row count."""
-    await session.execute(PublicArticle.__table__.delete())
+    await session.execute(delete(PublicArticle))
     contents = (
         await session.execute(
             select(FactCheckContent)

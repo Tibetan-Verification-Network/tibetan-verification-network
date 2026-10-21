@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import Select, or_, select, text, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,10 +39,10 @@ def _search_filters(query: str) -> tuple[list[str], list[str]]:
 
 
 def _apply_search(
-    stmt: Select[tuple[PublicArticle]],
+    stmt: Select[Any],
     *,
     query: str,
-) -> Select[tuple[PublicArticle]]:
+) -> Select[Any]:
     tibetan, latin = _search_filters(query)
     clauses = []
     if tibetan:

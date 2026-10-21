@@ -11,6 +11,7 @@ from app.api.deps.access import load_fact_check, load_investigation, require_pol
 from app.core.deps import get_db_session
 from app.core.permissions import get_current_user, require_csrf_for_cookie_mutations
 from app.core.policy import Action
+from app.db.enums import LanguageCode as DbLanguageCode
 from app.db.enums import WorkflowStatus
 from app.models.publication import FactCheck
 from app.models.research import Investigation
@@ -75,6 +76,11 @@ from app.services.reviews import (
 )
 from app.services.topics import list_fact_check_topics, replace_fact_check_topics
 
+
+def _db_language(lang: LanguageCode) -> DbLanguageCode:
+    return DbLanguageCode(lang.value)
+
+
 investigation_factcheck_router = APIRouter(tags=["factchecks"])
 
 editorial_factcheck_router = APIRouter(prefix="/editorial/factchecks", tags=["factchecks"])
@@ -119,7 +125,7 @@ async def factcheck_list(
         limit=limit,
         cursor=cursor,
         workflow_status=workflow_status,
-        language=language,
+        language=_db_language(language) if language is not None else None,
         mine=mine,
         awaiting_my_approval=awaiting_my_approval,
     )
@@ -162,7 +168,7 @@ async def language_draft_get(
     ],
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> DraftResponse:
-    return await get_language_draft(db, fact_check=fact_check, language=language)
+    return await get_language_draft(db, fact_check=fact_check, language=_db_language(language))
 
 
 @editorial_factcheck_router.patch(
@@ -183,7 +189,7 @@ async def language_draft_patch(
     return await patch_language_draft(
         db,
         fact_check=fact_check,
-        language=language,
+        language=_db_language(language),
         actor=auth.user,
         body=body,
     )
@@ -207,7 +213,7 @@ async def language_sources_replace(
     return await replace_language_sources(
         db,
         fact_check=fact_check,
-        language=language,
+        language=_db_language(language),
         actor=auth.user,
         body=body,
     )
@@ -241,7 +247,9 @@ async def language_readiness_get(
     ],
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> ReadinessResponse:
-    return await get_language_readiness(db, fact_check=fact_check, language=language.value)
+    return await get_language_readiness(
+        db, fact_check=fact_check, language=_db_language(language)
+    )
 
 
 @editorial_factcheck_router.post(
@@ -411,7 +419,9 @@ async def language_revisions_list(
     ],
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> RevisionListResponse:
-    return await list_language_revisions(db, fact_check=fact_check, language=language)
+    return await list_language_revisions(
+        db, fact_check=fact_check, language=_db_language(language)
+    )
 
 
 @editorial_factcheck_router.post(

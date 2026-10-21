@@ -21,10 +21,11 @@ def _settings(request: Request) -> Settings:
     return settings
 
 
-def _client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+def _client_ip(request: Request, settings: Settings) -> str:
+    if settings.trust_forwarded_for:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
     if request.client is not None and request.client.host:
         return request.client.host
     return "unknown"
@@ -45,7 +46,7 @@ async def create_submission(
         db,
         payload=payload,
         settings=settings,
-        client_ip=_client_ip(request),
+        client_ip=_client_ip(request, settings),
         captcha=captcha_verifier_for(settings),
     )
     return SubmissionReceiptResponse(receipt_id=receipt_id)

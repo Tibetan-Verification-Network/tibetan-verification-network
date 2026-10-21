@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.policy import scope_factchecks
+from app.db.enums import LanguageCode as DbLanguageCode
 from app.db.enums import LanguageEditorialStatus, ReviewDecision
 from app.models.identity import User
 from app.models.publication import (
@@ -182,7 +183,7 @@ async def get_language_readiness(
     session: AsyncSession,
     *,
     fact_check: FactCheck,
-    language: str,
+    language: DbLanguageCode,
 ) -> ReadinessResponse:
     content = await _load_content_for_language(
         session,

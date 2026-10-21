@@ -31,6 +31,7 @@ from app.models.publication import (
     FactCheckContentSource,
 )
 from app.models.research import Investigation, Source
+from app.schemas.common import LanguageCode as ApiLanguageCode
 from app.schemas.factchecks import (
     DraftPatchRequest,
     DraftResponse,
@@ -223,7 +224,7 @@ def _draft_response(content: FactCheckContent) -> DraftResponse:
     ordered = sorted(content.source_links, key=lambda row: row.position)
     return DraftResponse(
         fact_check_id=content.fact_check_id,
-        language=LanguageCode(content.language.value),
+        language=ApiLanguageCode(content.language.value),
         editorial_status=content.editorial_status,
         translation_status=content.translation_status,
         current_revision_number=content.current_revision_number,
@@ -271,7 +272,7 @@ async def _language_summaries(
         summaries.append(
             LanguageContentSummaryResponse(
                 content_id=content.id,
-                language=LanguageCode(content.language.value),
+                language=ApiLanguageCode(content.language.value),
                 editorial_status=content.editorial_status,
                 translation_status=content.translation_status,
                 current_revision_number=content.current_revision_number,
@@ -351,7 +352,7 @@ async def create_fact_check(
         investigation_id=investigation.id,
         workflow_status=fact_check.workflow_status,
         public_slug=fact_check.public_slug,
-        languages=[LanguageCode(row.language.value) for row in fact_check.contents],
+        languages=[ApiLanguageCode(row.language.value) for row in fact_check.contents],
     )
 
 
@@ -423,7 +424,7 @@ async def list_fact_checks(
             **FactCheckSummaryResponse.model_validate(row).model_dump(),
             languages=[
                 FactCheckLanguageBriefResponse(
-                    language=LanguageCode(content.language.value),
+                    language=ApiLanguageCode(content.language.value),
                     editorial_status=content.editorial_status,
                     title=content.title,
                 )

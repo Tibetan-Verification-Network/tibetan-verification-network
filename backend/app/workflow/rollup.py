@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+import uuid
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.enums import LanguageEditorialStatus, WorkflowStatus
-from app.models.publication import FactCheck
+from app.models.publication import FactCheck, FactCheckContent
 from app.models.research import Investigation
 
 
 def derive_workflow_status_from_contents(
-    contents: list,
+    contents: list[FactCheckContent],
 ) -> WorkflowStatus:
     if any(getattr(row, "live_version_id", None) is not None for row in contents):
         return WorkflowStatus.PUBLISHED
@@ -42,7 +44,10 @@ async def recompute_workflow_rollup(
         return
 
     if investigation is not None:
-        await session.refresh(investigation, attribute_names=["workflow_status", "hold_from_status"])
+        await session.refresh(
+            investigation,
+            attribute_names=["workflow_status", "hold_from_status"],
+        )
         if investigation.workflow_status in {WorkflowStatus.ON_HOLD, WorkflowStatus.REJECTED}:
             fact_check.workflow_status = investigation.workflow_status
             return
@@ -71,7 +76,7 @@ async def recompute_workflow_rollup(
 
 async def load_fact_check_for_rollup(
     session: AsyncSession,
-    fact_check_id,
+    fact_check_id: uuid.UUID,
 ) -> FactCheck | None:
     from sqlalchemy import select
 

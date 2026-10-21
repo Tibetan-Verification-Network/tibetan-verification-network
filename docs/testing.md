@@ -47,7 +47,7 @@ Vitest and Testing Library cover:
 
 ### End-to-end (Playwright)
 
-`frontend/e2e/` runs against a migrated and seeded Compose stack (`backend/scripts/seed_e2e.py`). `public.spec.ts` covers the public site. `editorial.spec.ts` takes a public claim through triage, evidence, drafting in both languages with an edit conflict, review, approval, publication, a correction and a withdrawal using the three seeded staff. Each run uses its own claim and slug, so it can be repeated.
+`frontend/e2e/` runs against a migrated and seeded Compose stack (`backend/scripts/seed_e2e.py`). `public.spec.ts` covers the public site. `keyboard.spec.ts` and `security.spec.ts` cover keyboard-only flows and public/private separation. `editorial.spec.ts` takes a public claim through triage, evidence, drafting in both languages with an edit conflict, review, approval, publication, a correction and a withdrawal using the three seeded staff. Each run uses its own claim and slug, so it can be repeated. CI job *End-to-end and accessibility* installs Chromium and WebKit.
 
 ```sh
 cd frontend && npx playwright install chromium

@@ -336,7 +336,11 @@ async def apply_triage_action(
 
     audit_payload: dict[str, Any] = {"action": body.action}
 
-    async def transition_submission(to_status: WorkflowStatus, *, reason: str | None = None) -> None:
+    async def transition_submission(
+        to_status: WorkflowStatus,
+        *,
+        reason: str | None = None,
+    ) -> None:
         if submission.workflow_status == to_status:
             return
         try:

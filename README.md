@@ -65,6 +65,9 @@ GitHub Actions runs the same checks in independent jobs. See [docs/testing.md](d
 - [Bootstrap administrator](docs/bootstrap-admin.md) — the one-time administrator command
 - [Data model](docs/data-model.md) — relationships and privacy boundaries
 - [SPA authentication contract](docs/spa-auth-contract.md) — cookie and header rules
+- [Hosting requirements](docs/hosting.md) — production env contract (provider-agnostic)
+- [Runbook](docs/runbook.md) — deploy, rollback, restore, incidents
+- [Accessibility testing](docs/accessibility-testing.md) — automated and manual matrix
 
 ## Configuration
 

@@ -39,15 +39,18 @@ def translation_status_issues(
     if sibling is None:
         return []
     issues: list[str] = []
-    if sibling.editorial_status == LanguageEditorialStatus.PUBLISHED:
-        if content.translation_status == TranslationStatus.PENDING:
-            issues.append("translation_status_pending_while_sibling_published")
-    if content.translation_status == TranslationStatus.PUBLISHED:
-        if content.editorial_status not in {
-            LanguageEditorialStatus.APPROVED,
-            LanguageEditorialStatus.PUBLISHED,
-        }:
-            issues.append("translation_status_published_before_editorial_publication")
+    if (
+        sibling.editorial_status == LanguageEditorialStatus.PUBLISHED
+        and content.translation_status == TranslationStatus.PENDING
+    ):
+        issues.append("translation_status_pending_while_sibling_published")
+    published_translation = content.translation_status == TranslationStatus.PUBLISHED
+    editorial_public = content.editorial_status in {
+        LanguageEditorialStatus.APPROVED,
+        LanguageEditorialStatus.PUBLISHED,
+    }
+    if published_translation and not editorial_public:
+        issues.append("translation_status_published_before_editorial_publication")
     return issues
 
 

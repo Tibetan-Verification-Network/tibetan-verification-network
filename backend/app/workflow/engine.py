@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -199,7 +199,7 @@ async def _apply_investigation_transition(
         investigation.hold_reason = None
     elif to_status == WorkflowStatus.REJECTED:
         investigation.reject_reason = reason
-    elif to_status == WorkflowStatus.RESEARCHING and from_status != WorkflowStatus.ON_HOLD:
+    elif to_status == WorkflowStatus.RESEARCHING:
         investigation.hold_reason = None
 
     investigation.workflow_status = resolved_to
@@ -303,13 +303,16 @@ async def apply_submission_status(
     actor: User,
     reason: str | None = None,
 ) -> Submission:
-    return await apply_transition(
-        session,
-        subject=TransitionSubject.SUBMISSION,
-        entity_id=submission.id,
-        to_status=to_status,
-        actor=actor,
-        reason=reason,
+    return cast(
+        Submission,
+        await apply_transition(
+            session,
+            subject=TransitionSubject.SUBMISSION,
+            entity_id=submission.id,
+            to_status=to_status,
+            actor=actor,
+            reason=reason,
+        ),
     )
 
 
@@ -327,11 +330,14 @@ async def apply_investigation_status(
         .options(selectinload(Investigation.fact_check))
     )
     row = loaded.scalar_one()
-    return await apply_transition(
-        session,
-        subject=TransitionSubject.INVESTIGATION,
-        entity_id=row.id,
-        to_status=to_status,
-        actor=actor,
-        reason=reason,
+    return cast(
+        Investigation,
+        await apply_transition(
+            session,
+            subject=TransitionSubject.INVESTIGATION,
+            entity_id=row.id,
+            to_status=to_status,
+            actor=actor,
+            reason=reason,
+        ),
     )
