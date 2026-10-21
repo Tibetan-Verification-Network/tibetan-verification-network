@@ -99,7 +99,7 @@ export function LoginPage() {
     <>
       <DocumentTitle title={t("login.title")} />
       <h1>{t("login.title")}</h1>
-      <p>{t("login.lead")}</p>
+      <p className="lede">{t("login.lead")}</p>
       <ErrorSummary errors={summary} />
       <form
         className="form"
@@ -133,7 +133,7 @@ export function LoginPage() {
           {t("login.submit")}
         </Button>
       </form>
-      <p>
+      <p className="form-note">
         {t("login.activatePrompt")} <Link to="/activate">{t("login.activateLink")}</Link>
       </p>
     </>

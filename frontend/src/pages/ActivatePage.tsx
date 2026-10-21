@@ -116,7 +116,7 @@ export function ActivatePage() {
     <>
       <DocumentTitle title={t("activate.title")} />
       <h1>{t("activate.title")}</h1>
-      <p>{t("activate.lead")}</p>
+      <p className="lede">{t("activate.lead")}</p>
       {done ? (
         <Alert tone="success">
           <p>{t("activate.success")}</p>
