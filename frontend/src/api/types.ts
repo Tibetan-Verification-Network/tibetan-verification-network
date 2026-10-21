@@ -1,7 +1,5 @@
 import type { MessageKey } from "../i18n/locales/en";
 
-export const PASSWORD_MIN_LENGTH = 12;
-
 export const STAFF_ROLES = ["platform_administrator", "researcher", "editor", "approver"] as const;
 
 export type StaffRole = (typeof STAFF_ROLES)[number];

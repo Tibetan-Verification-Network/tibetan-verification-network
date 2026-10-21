@@ -47,10 +47,17 @@ async def _run(email: str, password: str, display_name: str | None) -> int:
 
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
+    settings = get_settings()
     password = args.password or getpass.getpass("Administrator password: ")
     confirm = getpass.getpass("Confirm password: ")
     if password != confirm:
         print("Passwords do not match.", file=sys.stderr)
+        raise SystemExit(1)
+    if len(password) < settings.password_min_length:
+        print(
+            f"Password must be at least {settings.password_min_length} characters.",
+            file=sys.stderr,
+        )
         raise SystemExit(1)
     raise SystemExit(asyncio.run(_run(args.email, password, args.display_name)))
 

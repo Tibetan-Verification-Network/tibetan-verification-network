@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { ConfigurationError, readApiBaseUrl } from "./config";
+import { ConfigurationError, readApiBaseUrl, readPasswordMinLength } from "./config";
+
+describe("readPasswordMinLength", () => {
+  it("defaults to 12 and clamps to backend bounds", () => {
+    expect(readPasswordMinLength("")).toBe(12);
+    expect(readPasswordMinLength("10")).toBe(10);
+    expect(readPasswordMinLength("7")).toBe(8);
+    expect(readPasswordMinLength("999")).toBe(128);
+    expect(readPasswordMinLength("not-a-number")).toBe(12);
+  });
+});
 
 describe("readApiBaseUrl", () => {
   it("keeps only the origin", () => {

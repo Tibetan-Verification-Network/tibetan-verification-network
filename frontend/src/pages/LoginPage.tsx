@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { fetchCurrentUser, login } from "../api/auth";
 import { setCsrfToken } from "../api/client";
-import { ApiError, PASSWORD_MIN_LENGTH } from "../api/types";
+import { ApiError } from "../api/types";
+import { PASSWORD_MIN_LENGTH } from "../config";
 import { editorialReturnPath } from "../auth/returnPath";
 import { useAuth } from "../auth/useAuth";
 import { DocumentTitle } from "../components/DocumentTitle";

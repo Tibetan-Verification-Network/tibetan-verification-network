@@ -2,7 +2,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { activateInvite } from "../api/auth";
-import { ApiError, PASSWORD_MIN_LENGTH } from "../api/types";
+import { ApiError } from "../api/types";
+import { PASSWORD_MIN_LENGTH } from "../config";
 import { currentInviteToken, forgetInviteToken, rememberInviteToken } from "../auth/inviteMemory";
 import { useAuth } from "../auth/useAuth";
 import { Alert } from "../components/Alert";

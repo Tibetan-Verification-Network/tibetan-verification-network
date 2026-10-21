@@ -41,7 +41,52 @@ make logs
 make stop
 ```
 
-`make stop` keeps the named database volume `tvn-postgres-data`. Remove that volume with `docker compose down -v` when you want an empty database.
+## Local database persistence
+
+Compose stores PostgreSQL data in the named Docker volume **`tvn-postgres-data`**. MinIO archive files use **`tvn-minio-data`**. The API does not create tables at startup; schema comes from **`make migrate`**.
+
+| Command | Containers | Volumes | Typical use |
+| --- | --- | --- | --- |
+| `make stop` or `docker compose down` | Removed | **Kept** | Shut down for the day; same data after `make start` |
+| `make start` | Recreated | Unchanged | Bring the stack back up |
+| `docker compose down -v` | Removed | **Deleted** | Intentionally empty local database |
+
+**Keeping data across restarts:** `make stop` then `make start` is enough. So is `docker compose down` then `make start` — that is the same as `make stop` for persistence. Staff accounts, editorial content, and applied migrations stay on the volume.
+
+**After `git pull`:** run `make migrate` when new backend migrations were added. You usually do not need to migrate again after a simple stop/start.
+
+**After `docker compose down -v`:** the database is empty. Run the full bootstrap sequence:
+
+```sh
+make start
+make migrate
+export TVN_BOOTSTRAP_EMAIL=admin@example.org
+make bootstrap-admin
+```
+
+**Host-side commands must hit the same database as Compose.** Copy `.env.example` to `.env` and keep `DATABASE_URL=postgresql://tvn:tvn_local_dev@localhost:5432/tvn` aligned with `POSTGRES_*` in Compose. Running `make migrate` or `make bootstrap-admin` against a different URL updates another database and the running API will look broken (for example login failing with “The service could not be reached” when schema is missing).
+
+More detail: [docs/local-development.md](docs/local-development.md).
+
+## Testing users (E2E seed)
+
+For local manual testing or Playwright (`npm run e2e` in `frontend/`), seed deterministic staff accounts and public fact-checks with [`backend/scripts/seed_e2e.py`](backend/scripts/seed_e2e.py). Use a migrated database on the same `DATABASE_URL` as Compose (from `.env` after `cp .env.example .env`).
+
+```sh
+make start
+make migrate
+cd backend && uv run python scripts/seed_e2e.py
+```
+
+The script is idempotent: existing `e2e-*` slugs and users are skipped or updated in place. It is intended for development and CI only — do not run it against a database that holds real editorial content.
+
+| Display name | Email | Role | Password |
+| --- | --- | --- | --- |
+| E2E Author | `e2e-author@example.org` | Researcher | `correct-horse-battery-staple` |
+| E2E Editor | `e2e-editor@example.org` | Editor | `correct-horse-battery-staple` |
+| E2E Approver | `e2e-approver@example.org` | Approver | `correct-horse-battery-staple` |
+
+Accounts are active with passwords set; sign in at `/login` (no invite or `/activate` step). The seed also publishes three public slugs used by the E2E suite: `e2e-river`, `e2e-pending`, and `e2e-withdrawn`. Full Playwright setup: [docs/local-development.md](docs/local-development.md#end-to-end-tests).
 
 ## Checks
 
@@ -59,6 +104,7 @@ GitHub Actions runs the same checks in independent jobs. See [docs/testing.md](d
 
 ## Documentation
 
+- [System design document](docs/design-document.md) — architecture, API, security, deployment, and roadmap
 - [Local development](docs/local-development.md) — environment, services, and migrations
 - [Testing](docs/testing.md) — pytest, Vitest, accessibility, and CI
 - [Authentication](docs/authentication.md) — sessions, CSRF, invites, and secret rotation

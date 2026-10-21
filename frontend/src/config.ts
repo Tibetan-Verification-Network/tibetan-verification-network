@@ -30,6 +30,26 @@ export function readApiBaseUrl(
   return url.origin;
 }
 
+const PASSWORD_MIN = 8;
+const PASSWORD_MAX = 128;
+const DEFAULT_PASSWORD_MIN_LENGTH = 12;
+
+/** Matches backend `password_min_length` (from `PASSWORD_MIN_LENGTH` / `VITE_PASSWORD_MIN_LENGTH`). */
+export function readPasswordMinLength(
+  value: string | undefined = import.meta.env.VITE_PASSWORD_MIN_LENGTH,
+): number {
+  if (value === undefined || value.trim() === "") {
+    return DEFAULT_PASSWORD_MIN_LENGTH;
+  }
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) {
+    return DEFAULT_PASSWORD_MIN_LENGTH;
+  }
+  return Math.min(PASSWORD_MAX, Math.max(PASSWORD_MIN, parsed));
+}
+
+export const PASSWORD_MIN_LENGTH = readPasswordMinLength();
+
 const TURNSTILE_SITE_KEY = /^[0-9A-Za-z_-]{8,100}$/;
 
 /** The Turnstile widget is shown only when a site key is configured. */
