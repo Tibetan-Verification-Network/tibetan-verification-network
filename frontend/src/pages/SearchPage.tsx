@@ -8,6 +8,7 @@ import { DocumentTitle } from "../components/DocumentTitle";
 import { SelectField } from "../components/Fields";
 import { FactCheckCard } from "../components/FactCheckCard";
 import { LoadingState, QueryError } from "../components/QueryState";
+import { SearchControl } from "../components/SearchControl";
 import { TextField } from "../components/TextField";
 import { isLocale, type Locale } from "../i18n/translate";
 import { useI18n } from "../i18n/useI18n";
@@ -96,18 +97,26 @@ export function SearchPage() {
       <p className="lede">{t("search.lead")}</p>
 
       <form className="search-form" role="search" aria-label={title} onSubmit={onSubmit}>
-        <TextField
+        <SearchControl
           id="search-q"
           label={t("search.query")}
           hint={t("search.queryHint")}
-          type="search"
-          name="q"
           value={draft.q}
-          maxLength={200}
-          autoComplete="off"
+          clearLabel={t("search.clearQuery")}
           onChange={(event) => update("q", event.target.value)}
+          onClear={() => update("q", "")}
         />
-        <fieldset className="filters">
+        <fieldset
+          className={
+            applied.verdict !== "" ||
+            applied.topic !== "" ||
+            applied.from !== "" ||
+            applied.to !== "" ||
+            applied.lang !== locale
+              ? "filters is-active"
+              : "filters"
+          }
+        >
           <legend>{t("search.filters")}</legend>
           <SelectField
             id="search-verdict"

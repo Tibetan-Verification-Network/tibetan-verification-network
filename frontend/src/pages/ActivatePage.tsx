@@ -115,72 +115,74 @@ export function ActivatePage() {
   return (
     <>
       <DocumentTitle title={t("activate.title")} />
-      <h1>{t("activate.title")}</h1>
-      <p className="lede">{t("activate.lead")}</p>
-      {done ? (
-        <Alert tone="success">
-          <p>{t("activate.success")}</p>
-          <p>
-            <Link to="/login">{t("activate.loginLink")}</Link>
-          </p>
-        </Alert>
-      ) : (
-        <>
-          <ErrorSummary errors={summary} />
-          <form
-            className="form"
-            noValidate
-            onSubmit={(event) => void onSubmit(event)}
-            aria-busy={pending}
-          >
-            <TextField
-              id="invite-token"
-              label={t("activate.token")}
-              autoComplete="off"
-              spellCheck={false}
-              required
-              maxLength={512}
-              value={token}
-              error={fieldError("invite-token")}
-              onChange={(event) => setTokenDraft(event.target.value)}
-            />
-            <TextField
-              id="display-name"
-              label={t("activate.displayName")}
-              hint={t("activate.displayNameHint")}
-              autoComplete="name"
-              maxLength={200}
-              value={displayName}
-              onChange={(event) => setDisplayName(event.target.value)}
-            />
-            <TextField
-              id="new-password"
-              label={t("activate.password")}
-              type="password"
-              autoComplete="new-password"
-              required
-              maxLength={256}
-              value={password}
-              error={fieldError("new-password")}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-            <TextField
-              id="confirm-password"
-              label={t("activate.confirm")}
-              type="password"
-              autoComplete="new-password"
-              required
-              maxLength={256}
-              value={confirm}
-              error={fieldError("confirm-password")}
-              onChange={(event) => setConfirm(event.target.value)}
-            />
-            <Button type="submit" disabled={pending}>
-              {t("activate.submit")}
-            </Button>
-          </form>
-        </>
-      )}
+      <div className="auth-panel">
+        <h1>{t("activate.title")}</h1>
+        <p className="lede">{t("activate.lead")}</p>
+        {done ? (
+          <Alert tone="success">
+            <p>{t("activate.success")}</p>
+            <p>
+              <Link to="/login">{t("activate.loginLink")}</Link>
+            </p>
+          </Alert>
+        ) : (
+          <>
+            <ErrorSummary errors={summary} />
+            <form
+              className="form"
+              noValidate
+              onSubmit={(event) => void onSubmit(event)}
+              aria-busy={pending}
+            >
+              <TextField
+                id="invite-token"
+                label={t("activate.token")}
+                autoComplete="off"
+                spellCheck={false}
+                required
+                maxLength={512}
+                value={token}
+                error={fieldError("invite-token")}
+                onChange={(event) => setTokenDraft(event.target.value)}
+              />
+              <TextField
+                id="display-name"
+                label={t("activate.displayName")}
+                hint={t("activate.displayNameHint")}
+                autoComplete="name"
+                maxLength={200}
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+              />
+              <TextField
+                id="new-password"
+                label={t("activate.password")}
+                type="password"
+                autoComplete="new-password"
+                required
+                maxLength={256}
+                value={password}
+                error={fieldError("new-password")}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+              <TextField
+                id="confirm-password"
+                label={t("activate.confirm")}
+                type="password"
+                autoComplete="new-password"
+                required
+                maxLength={256}
+                value={confirm}
+                error={fieldError("confirm-password")}
+                onChange={(event) => setConfirm(event.target.value)}
+              />
+              <Button type="submit" disabled={pending}>
+                {t("activate.submit")}
+              </Button>
+            </form>
+          </>
+        )}
+      </div>
     </>
   );
 }

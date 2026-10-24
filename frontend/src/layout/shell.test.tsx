@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -37,9 +37,9 @@ describe("public shell", () => {
   it("keeps navigation visible on a wide viewport", async () => {
     installAnonymousApi();
     renderApp("/");
+    const nav = screen.getByRole("navigation", { name: "Public" });
     expect(screen.queryByRole("button", { name: "Menu" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "About" })).toBeVisible();
-    expect(await screen.findByText("Does the river run dry every winter?")).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "About" })).toBeVisible();
   });
 
   it("opens the narrow menu and reaches its links from the keyboard", async () => {
@@ -48,10 +48,11 @@ describe("public shell", () => {
     const user = userEvent.setup();
     renderApp("/");
 
+    const nav = screen.getByRole("navigation", { name: "Public" });
     const menu = screen.getByRole("button", { name: "Menu" });
-    expect(screen.queryByRole("link", { name: "About" })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("link", { name: "About" })).not.toBeInTheDocument();
     await user.click(menu);
-    expect(screen.getByRole("link", { name: "About" })).toBeVisible();
+    expect(within(nav).getByRole("link", { name: "About" })).toBeVisible();
     screen.getByRole("button", { name: "Close menu" }).focus();
     await user.tab();
     expect(screen.getByRole("link", { name: "Home" })).toHaveFocus();
@@ -60,11 +61,13 @@ describe("public shell", () => {
   it("has no public registration path", async () => {
     installAnonymousApi();
     renderApp("/");
-    expect(screen.queryByRole("link", { name: /register|sign up/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /register|create an account/i }),
+    ).not.toBeInTheDocument();
 
-    renderApp("/register");
+    const denied = renderApp("/register");
     expect(await screen.findByRole("heading", { name: "Page not found" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
-    expect(document.body.textContent).not.toMatch(/sign up/i);
+    expect(denied.container.textContent).not.toMatch(/sign up/i);
   });
 });

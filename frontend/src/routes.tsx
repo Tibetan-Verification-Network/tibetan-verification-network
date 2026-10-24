@@ -28,6 +28,7 @@ import { AboutPage } from "./pages/AboutPage";
 import { ArticlePage } from "./pages/ArticlePage";
 import { ArticleVersionPage } from "./pages/ArticleVersionPage";
 import { Home } from "./pages/Home";
+import { MembershipPage } from "./pages/MembershipPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { SearchPage } from "./pages/SearchPage";
@@ -49,6 +50,7 @@ function publicRoutes(locale: Locale) {
       <Route path="topics/:slug" element={<TopicPage />} />
       <Route path="about" element={<AboutPage />} />
       <Route path="submit" element={<SubmitPage />} />
+      <Route path="membership" element={<MembershipPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Route>
   );
@@ -165,6 +167,7 @@ export function AppRoutes() {
       <Route path="fact-checks/*" element={<LegacyRedirect />} />
       <Route path="topics/*" element={<LegacyRedirect />} />
       <Route path="submit" element={<LegacyRedirect />} />
+      <Route path="membership" element={<LegacyRedirect />} />
       <Route path="about" element={<LegacyRedirect />} />
       <Route element={<PublicLayout />}>
         <Route path="login" element={<LoginPage />} />

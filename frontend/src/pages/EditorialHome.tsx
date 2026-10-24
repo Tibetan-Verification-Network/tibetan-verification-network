@@ -42,11 +42,13 @@ export function EditorialHome() {
     <>
       <DocumentTitle title={t("nav.overview")} />
       <h1>{t("nav.overview")}</h1>
-      <p>{t("editorial.welcome", { name })}</p>
+      <p className="lede">{t("editorial.welcome", { name })}</p>
       <h2>{t("editorial.roles")}</h2>
-      <ul>
+      <ul className="badge-row role-list">
         {user?.roles.map((role) => (
-          <li key={role}>{t(ROLE_LABELS[role])}</li>
+          <li key={role}>
+            <span className="status-badge">{t(ROLE_LABELS[role])}</span>
+          </li>
         ))}
       </ul>
       <NextActions />

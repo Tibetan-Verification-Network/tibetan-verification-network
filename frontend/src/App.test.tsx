@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { AppShell } from "./App";
-import { installFetch, installPublicApi, requestUrl } from "./test/fetch";
+import { installFetch, installPublicApi } from "./test/fetch";
 
 describe("application shell", () => {
   beforeEach(() => {
@@ -10,28 +10,21 @@ describe("application shell", () => {
   });
 
   it("renders the product name on the locale home page without configuration leaks", async () => {
-    const fetchMock = installPublicApi();
+    installPublicApi();
 
     render(<AppShell baseUrl="http://localhost:8000" />);
 
-    expect(
-      screen.getByRole("heading", { name: "Tibetan Verification Network" }),
-    ).toBeInTheDocument();
-    expect(await screen.findByText("Does the river run dry every winter?")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Tibetan Verification Network" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Independent fact-checks" })).toBeInTheDocument();
+    expect(screen.getByText("Evidence-based · Human-reviewed")).toBeInTheDocument();
     expect(window.location.pathname).toBe("/en");
-
-    const listCall = fetchMock.mock.calls.find(([input]) =>
-      requestUrl(input as RequestInfo | URL).includes("/api/v1/factchecks"),
-    );
-    expect(listCall).toBeDefined();
-    const init = listCall?.[1] as RequestInit;
-    expect(init.credentials).toBe("omit");
     expect(document.body.textContent).not.toContain("localhost:8000");
     expect(document.body.textContent).not.toContain("VITE_");
     expect(document.body.textContent).not.toContain("Tibetan FactCheck");
   });
 
   it("reports an unavailable API without the response body", async () => {
+    window.history.replaceState(null, "", "/en/fact-checks");
     installFetch((url) => {
       if (url.endsWith("/api/v1/me")) {
         return { status: 401, body: { detail: "Authentication required" } };
@@ -52,6 +45,7 @@ describe("application shell", () => {
   });
 
   it("reports an unavailable API when the network fails", async () => {
+    window.history.replaceState(null, "", "/en/fact-checks");
     installFetch((url) => {
       if (url.endsWith("/api/v1/me")) {
         return { status: 401, body: { detail: "Authentication required" } };

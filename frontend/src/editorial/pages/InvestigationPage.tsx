@@ -1,5 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 
+import { buttonVariants } from "@/components/ui/button";
+
 import { useArchiveDocuments, useInvestigation } from "../../api/editorial/queries";
 import { useAuth } from "../../auth/useAuth";
 import { DocumentTitle } from "../../components/DocumentTitle";
@@ -56,7 +58,8 @@ export function InvestigationPage() {
             {hasFactCheck ? (
               <p>
                 <Link
-                  className="button button-primary"
+                  className={buttonVariants()}
+                  data-slot="button"
                   to={`/editorial/factchecks/${detail.fact_check_id}`}
                 >
                   {t("investigation.openFactCheck")}

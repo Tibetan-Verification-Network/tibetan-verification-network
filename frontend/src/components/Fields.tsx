@@ -5,6 +5,10 @@ import type {
   TextareaHTMLAttributes,
 } from "react";
 
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+
 function describedBy(id: string, hint: ReactNode, error?: string): string | undefined {
   const ids = [hint ? `${id}-hint` : undefined, error ? `${id}-error` : undefined].filter(Boolean);
   return ids.length > 0 ? ids.join(" ") : undefined;
@@ -25,7 +29,7 @@ function FieldFrame({
 }) {
   return (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
+      <Label htmlFor={id}>{label}</Label>
       {hint ? (
         <p id={`${id}-hint`} className="hint">
           {hint}
@@ -55,7 +59,7 @@ export function TextAreaField({
 } & TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <FieldFrame id={id} label={label} hint={hint} error={error}>
-      <textarea
+      <Textarea
         id={id}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy(id, hint, error)}
@@ -69,6 +73,7 @@ export function SelectField({
   id,
   label,
   options,
+  className,
   ...props
 }: {
   id: string;
@@ -77,8 +82,17 @@ export function SelectField({
 } & SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
-      <select id={id} {...props}>
+      <Label htmlFor={id}>{label}</Label>
+      <select
+        id={id}
+        data-slot="select"
+        className={cn(
+          "flex h-11 w-full rounded-lg border border-input bg-card px-3 text-base text-foreground shadow-sm",
+          "disabled:cursor-not-allowed disabled:opacity-50",
+          className,
+        )}
+        {...props}
+      >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 
 import { Button } from "../../components/Button";
 import { TextField } from "../../components/TextField";
+import { cn } from "@/lib/utils";
 import { useI18n } from "../../i18n/useI18n";
 
 const FOCUSABLE =
@@ -105,7 +106,10 @@ export function ConfirmDialog({
   }
 
   return createPortal(
-    <div className="dialog-backdrop">
+    <div
+      data-slot="dialog-overlay"
+      className="fixed inset-0 z-40 grid place-items-center overflow-y-auto bg-black/55 p-4"
+    >
       <div
         ref={dialogRef}
         role="dialog"
@@ -113,7 +117,11 @@ export function ConfirmDialog({
         aria-labelledby={titleId}
         aria-describedby={consequenceId}
         tabIndex={-1}
-        className={wide ? "dialog dialog-wide" : "dialog"}
+        data-slot="dialog"
+        className={cn(
+          "w-full max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-border bg-background p-6 text-foreground shadow-lg focus:outline-none",
+          wide ? "max-w-3xl" : "max-w-xl",
+        )}
         onKeyDown={onKeyDown}
       >
         <form onSubmit={submit} className="dialog-form">

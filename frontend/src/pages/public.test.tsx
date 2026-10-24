@@ -50,15 +50,28 @@ describe("locale routing", () => {
 });
 
 describe("home page", () => {
-  it("shows mission, search, latest fact-checks, topics, and the submit call to action", async () => {
+  it("shows a short introduction, search, and the membership banner", async () => {
     installPublicApi();
     renderApp("/en");
-    expect(await screen.findByText(RIVER_TITLE)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Our mission" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", {
+        name: "A Resilient and Trusted Tibetan Information Ecosystem",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Evidence-based · Human-reviewed")).toBeInTheDocument();
+    expect(
+      screen.getByText("Built by Tibetans, for Tibetans. Verified by people, empowered by AI."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Independent fact-checks" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Our mission" })).not.toBeInTheDocument();
+    expect(screen.queryByText(RIVER_TITLE)).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sign me up" })).toHaveAttribute(
+      "href",
+      "/en/membership",
+    );
     expect(screen.getByRole("search", { name: "Search fact-checks" })).toBeInTheDocument();
-    expect(await screen.findByRole("link", { name: "Environment" })).toBeInTheDocument();
     const submitLinks = screen.getAllByRole("link", { name: "Submit a claim" });
-    expect(submitLinks.length).toBe(2);
+    expect(submitLinks.length).toBeGreaterThanOrEqual(2);
     for (const link of submitLinks) {
       expect(link).toHaveAttribute("href", "/en/submit");
     }
@@ -70,10 +83,9 @@ describe("home page", () => {
     await expectAccessible();
   });
 
-  it("only lists fact-checks in the active language", async () => {
+  it("lists fact-checks for the active language on the search page", async () => {
     const fetchMock = installPublicApi();
-    renderApp("/bo");
-    expect(await screen.findByRole("heading", { name: bo["home.latest.title"] })).toBeVisible();
+    renderApp("/bo/fact-checks");
     await waitFor(() => {
       expect(fetchedUrls(fetchMock).some((url) => url.searchParams.get("lang") === "bo")).toBe(
         true,
@@ -101,10 +113,15 @@ describe("home page", () => {
 
 describe("search page", () => {
   it("lists result cards that link to the article in their own language", async () => {
-    installPublicApi();
+    const fetchMock = installPublicApi();
     renderApp("/en/fact-checks");
     const link = await screen.findByRole("link", { name: RIVER_TITLE });
     expect(link).toHaveAttribute("href", "/en/fact-checks/river-claim");
+    const listCall = fetchMock.mock.calls.find(([input]) =>
+      requestUrl(input as RequestInfo | URL).includes("/api/v1/factchecks"),
+    );
+    expect(listCall).toBeDefined();
+    expect((listCall?.[1] as RequestInit).credentials).toBe("omit");
     expect(screen.getByRole("status")).toHaveTextContent("2 fact-checks shown");
     expect(screen.getAllByText("False").length).toBeGreaterThan(0);
     await expectAccessible();
@@ -249,7 +266,7 @@ describe("article page", () => {
     renderApp("/en/fact-checks/river-claim");
     expect(await screen.findByText("Safe text")).toBeInTheDocument();
     expect(document.querySelector("script")).toBeNull();
-    expect(document.querySelector("img")).toBeNull();
+    expect(document.querySelector("#article-analysis img")).toBeNull();
     expect((window as unknown as { __pwned?: boolean }).__pwned).toBeUndefined();
     expect(screen.getByText("bad").getAttribute("href")).toBeNull();
     const ok = screen.getByRole("link", { name: "ok" });

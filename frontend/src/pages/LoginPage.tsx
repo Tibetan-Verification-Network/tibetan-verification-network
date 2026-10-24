@@ -9,6 +9,8 @@ import { editorialReturnPath } from "../auth/returnPath";
 import { useAuth } from "../auth/useAuth";
 import { DocumentTitle } from "../components/DocumentTitle";
 import { ErrorSummary, type SummaryError } from "../components/ErrorSummary";
+import { EyeIcon, EyeOffIcon } from "../components/icons";
+import { Logo } from "../components/Logo";
 import { TextField } from "../components/TextField";
 import { Button } from "../components/Button";
 import type { MessageKey } from "../i18n/locales/en";
@@ -32,6 +34,7 @@ export function LoginPage() {
   const [formError, setFormError] = useState<MessageKey | null>(null);
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -98,44 +101,63 @@ export function LoginPage() {
   return (
     <>
       <DocumentTitle title={t("login.title")} />
-      <h1>{t("login.title")}</h1>
-      <p className="lede">{t("login.lead")}</p>
-      <ErrorSummary errors={summary} />
-      <form
-        className="form"
-        noValidate
-        onSubmit={(event) => void onSubmit(event)}
-        aria-busy={pending}
-      >
-        <TextField
-          id="email"
-          label={t("login.email")}
-          type="email"
-          autoComplete="username"
-          required
-          maxLength={320}
-          value={email}
-          error={fieldError("email")}
-          onChange={(event) => setEmail(event.target.value)}
-        />
-        <TextField
-          id="password"
-          label={t("login.password")}
-          type="password"
-          autoComplete="current-password"
-          required
-          maxLength={256}
-          value={password}
-          error={fieldError("password")}
-          onChange={(event) => setPassword(event.target.value)}
-        />
-        <Button type="submit" disabled={pending}>
-          {t("login.submit")}
-        </Button>
-      </form>
-      <p className="form-note">
-        {t("login.activatePrompt")} <Link to="/activate">{t("login.activateLink")}</Link>
-      </p>
+      <div className="login-screen">
+        <aside className="login-aside">
+          <Logo inverse />
+          <p className="login-aside-copy">{t("home.lede")}</p>
+        </aside>
+        <div className="auth-panel">
+          <h1>{t("login.title")}</h1>
+          <p className="lede">{t("login.lead")}</p>
+          <ErrorSummary errors={summary} />
+          <form
+            className="form"
+            noValidate
+            onSubmit={(event) => void onSubmit(event)}
+            aria-busy={pending}
+          >
+            <TextField
+              id="email"
+              label={t("login.email")}
+              type="email"
+              autoComplete="username"
+              required
+              maxLength={320}
+              value={email}
+              error={fieldError("email")}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+            <TextField
+              id="password"
+              label={t("login.password")}
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              required
+              maxLength={256}
+              value={password}
+              error={fieldError("password")}
+              onChange={(event) => setPassword(event.target.value)}
+              suffix={
+                <button
+                  type="button"
+                  className="field-suffix"
+                  aria-pressed={showPassword}
+                  aria-label={showPassword ? t("login.hidePassword") : t("login.showPassword")}
+                  onClick={() => setShowPassword((current) => !current)}
+                >
+                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              }
+            />
+            <Button type="submit" disabled={pending}>
+              {t("login.submit")}
+            </Button>
+          </form>
+          <p className="form-note">
+            {t("login.activatePrompt")} <Link to="/activate">{t("login.activateLink")}</Link>
+          </p>
+        </div>
+      </div>
     </>
   );
 }

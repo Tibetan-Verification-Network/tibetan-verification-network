@@ -1,6 +1,8 @@
 import { Link, Outlet } from "react-router-dom";
 
+import { buttonVariants } from "@/components/ui/button";
 import { useAuth } from "../auth/useAuth";
+import { UserIcon } from "../components/icons";
 import { useI18n } from "../i18n/useI18n";
 import { useLocalePath } from "../i18n/useLocalePath";
 import { AppFrame, type NavItem } from "./AppFrame";
@@ -16,13 +18,14 @@ export function PublicLayout() {
     { to: to("submit"), label: "nav.submit" },
     { to: to("about"), label: "nav.about" },
   ];
+  const accountClass = buttonVariants({ variant: "outline", size: "sm" });
   const actions =
     status === "authenticated" ? (
-      <Link className="text-link" to="/editorial">
-        {t("nav.editorialDesk")}
+      <Link className="header-icon-button" to="/editorial" aria-label={t("nav.editorialDesk")}>
+        <UserIcon />
       </Link>
     ) : (
-      <Link className="text-link" to="/login">
+      <Link className={accountClass} data-slot="button" to="/login">
         {t("nav.login")}
       </Link>
     );

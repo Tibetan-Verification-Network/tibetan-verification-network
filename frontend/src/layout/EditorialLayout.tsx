@@ -64,8 +64,10 @@ export function EditorialLayout() {
 
   return (
     <AppFrame
+      variant="editorial"
       navLabel={t("nav.editorialLabel")}
       items={navFor(user)}
+      homeTo="/editorial"
       actions={
         <Button variant="secondary" disabled={pending} onClick={() => void onLogout()}>
           {t("nav.logout")}
