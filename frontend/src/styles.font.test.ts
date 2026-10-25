@@ -13,6 +13,8 @@ describe("font stack", () => {
     expect(entry).toContain("@fontsource/noto-sans/latin-400.css");
     expect(css).toContain("Noto Serif Tibetan");
     expect(css).toContain("Noto Sans");
+    expect(css).toContain('font-family: "Monlam Uni OuChan5"');
+    expect(css).toContain("MonlamUniOuChan5-Regular.woff2");
     expect(css).toContain("Microsoft Himalaya");
     expect(css).toContain("Kailasa");
     expect(css).toContain("@media (max-width: 40rem)");

@@ -1,4 +1,11 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from "react";
 import { Link, useNavigate } from "react-router-dom";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -15,7 +22,59 @@ gsap.registerPlugin(useGSAP);
 const HERO_IMAGE = { width: 1024, height: 597 };
 const HERO_PILL = { left: 0.208, top: 0.6415, width: 0.584, height: 0.1273 };
 const HERO_GROUP_SCALE = 0.88;
-const SEARCH_PROMPTS = ["a claim you have seen", "news about Tibet", "river in winter"];
+const SEARCH_PROMPTS = [
+  {
+    bo: "གནས་ཚུལ་འདིའི་འབྱུང་ཁུངས་གང་ཡིན་ནམ།",
+    en: "What is the source of this claim?",
+  },
+  {
+    bo: "པར་འདི་ངོ་མ་ཡིན་ནམ།",
+    en: "Is this image authentic?",
+  },
+  {
+    bo: "གནས་ཚུལ་འདི་སྤེལ་མཁན་སུ་ཡིན་ནམ།",
+    en: "Who is behind this information?",
+  },
+  {
+    bo: "བརྒྱུད་སྐུལ་མ་བྱས་གོང་ལ་ཞིབ་བཤེར་གྱིས།",
+    en: "Verify before you share.",
+  },
+];
+
+function shuffle<T>(items: readonly T[]): T[] {
+  const copy = [...items];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swap = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[swap]] = [copy[swap], copy[index]];
+  }
+  return copy;
+}
+
+/** English advances one letter at a time. Tibetan advances one syllable at a time. */
+function typingUnits(text: string): string[] {
+  const units: string[] = [];
+  let syllable = "";
+  for (const char of text) {
+    const code = char.codePointAt(0) ?? 0;
+    const tibetan = code >= 0x0f00 && code <= 0x0fff;
+    if (!tibetan) {
+      if (syllable !== "") {
+        units.push(syllable);
+        syllable = "";
+      }
+      units.push(char);
+      continue;
+    }
+    syllable += char;
+    if (char === "་" || char === "།") {
+      units.push(syllable);
+      syllable = "";
+    }
+  }
+  if (syllable !== "") units.push(syllable);
+  return units;
+}
+
 const HEADLINE_FIRST_LINE = "A Resilient and Trusted";
 
 function headlineLines(headline: string) {
@@ -104,6 +163,11 @@ export function Home() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const input = heroRef.current?.querySelector<HTMLInputElement>("#home-search");
+    input?.dispatchEvent(new Event("input"));
+  }, [query]);
+
   useGSAP(
     () => {
       const motion = gsap.matchMedia();
@@ -125,7 +189,9 @@ export function Home() {
           0.12,
         );
         intro.from(
-          hero.querySelectorAll(".home-hero-search .field, .home-hero-search button[type='submit']"),
+          hero.querySelectorAll(
+            ".home-hero-search .field, .home-hero-search button[type='submit']",
+          ),
           { y: 12, opacity: 0, duration: 0.65 },
           0.28,
         );
@@ -138,27 +204,57 @@ export function Home() {
         }
 
         const typing = gsap.timeline({ repeat: -1, defaults: { ease: "none" } });
-        for (const phrase of SEARCH_PROMPTS) {
+        const lines = shuffle(SEARCH_PROMPTS).flatMap((prompt) => [
+          { text: prompt.bo, tibetan: true },
+          { text: prompt.en, tibetan: false },
+        ]);
+        for (const line of lines) {
+          const units = typingUnits(line.text);
           const counter = { count: 0 };
+          const paint = () => {
+            ghost.textContent = units.slice(0, Math.round(counter.count)).join("");
+          };
           typing.to(counter, {
-            count: phrase.length,
-            duration: Math.max(phrase.length * 0.048, 0.4),
-            onUpdate: () => {
-              ghost.textContent = phrase.slice(0, Math.round(counter.count));
-            },
+            count: units.length,
+            duration: Math.max(units.length * (line.tibetan ? 0.14 : 0.046), 0.45),
+            onUpdate: paint,
           });
-          typing.to(counter, { duration: 1.15 });
+          typing.to(counter, { duration: line.tibetan ? 1.4 : 1.15 });
           typing.to(counter, {
             count: 0,
-            duration: Math.max(phrase.length * 0.03, 0.25),
-            onUpdate: () => {
-              ghost.textContent = phrase.slice(0, Math.round(counter.count));
-            },
+            duration: Math.max(units.length * 0.03, 0.25),
+            onUpdate: paint,
           });
-          typing.to(counter, { duration: 0.35 });
+          typing.to(counter, { duration: 0.32 });
         }
 
         const ghostWrap = ghost.parentElement;
+        const fitGhost = () => {
+          if (!ghostWrap || ghostWrap.clientWidth === 0) return;
+          const probe = document.createElement("span");
+          probe.style.position = "absolute";
+          probe.style.visibility = "hidden";
+          probe.style.whiteSpace = "nowrap";
+          probe.style.font = "inherit";
+          ghostWrap.append(probe);
+          ghostWrap.style.fontSize = "";
+          const caretSpace = (caret?.offsetWidth ?? 1) + 6;
+          const available = Math.max(0, ghostWrap.clientWidth - caretSpace);
+          let widest = 0;
+          for (const line of lines) {
+            probe.textContent = line.text;
+            widest = Math.max(widest, probe.getBoundingClientRect().width);
+          }
+          probe.remove();
+          if (widest <= available || available === 0) return;
+          const px = Number.parseFloat(getComputedStyle(ghostWrap).fontSize);
+          ghostWrap.style.fontSize = `${(px * available) / widest}px`;
+        };
+        fitGhost();
+        void document.fonts.ready.then(fitGhost);
+        const fitObserver =
+          typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fitGhost);
+        fitObserver?.observe(ghostWrap ?? hero);
         function syncGhost() {
           const busy = input.value.trim() !== "" || document.activeElement === input;
           if (!ghostWrap) return;
@@ -176,6 +272,8 @@ export function Home() {
         input.addEventListener("input", syncGhost);
         syncGhost();
         return () => {
+          fitObserver?.disconnect();
+          ghostWrap?.style.removeProperty("font-size");
           input.removeEventListener("focus", syncGhost);
           input.removeEventListener("blur", syncGhost);
           input.removeEventListener("input", syncGhost);
