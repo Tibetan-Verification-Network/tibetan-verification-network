@@ -13,7 +13,9 @@ import { useGSAP } from "@gsap/react";
 import { buttonVariants } from "@/components/ui/button";
 import { Button } from "../components/Button";
 import { DocumentTitle } from "../components/DocumentTitle";
+import { FactCheckCard } from "../components/FactCheckCard";
 import { SearchControl } from "../components/SearchControl";
+import { DEMO_CASES, DEMO_TOPIC_KEY, DEMO_TOPICS, demoCard, type DemoTopic } from "../demo/cases";
 import { useI18n } from "../i18n/useI18n";
 import { useLocalePath } from "../i18n/useLocalePath";
 
@@ -144,7 +146,10 @@ export function Home() {
   const ghostRef = useRef<HTMLSpanElement>(null);
   const caretRef = useRef<HTMLSpanElement>(null);
   const [query, setQuery] = useState("");
+  const [topic, setTopic] = useState<DemoTopic | "all">("all");
   const [placement, setPlacement] = useState<ReturnType<typeof heroPlacement> | null>(null);
+  const visibleCases =
+    topic === "all" ? DEMO_CASES : DEMO_CASES.filter((item) => item.topic === topic);
 
   useLayoutEffect(() => {
     const hero = heroRef.current;
@@ -251,7 +256,7 @@ export function Home() {
           ghostWrap.style.fontSize = `${(px * available) / widest}px`;
         };
         fitGhost();
-        void document.fonts.ready.then(fitGhost);
+        void document.fonts?.ready.then(fitGhost);
         const fitObserver =
           typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fitGhost);
         fitObserver?.observe(ghostWrap ?? hero);
@@ -333,6 +338,56 @@ export function Home() {
         <div className="home-after" style={placement?.after}>
           <p className="lede">{t("home.lede")}</p>
           <h2 className="home-note">{t("home.note")}</h2>
+        </div>
+      </section>
+
+      <section className="home-cases" id="home-cases" aria-labelledby="home-cases-title">
+        <div className="home-cases-heading">
+          <p className="home-cases-kicker">{t("home.cases.kicker")}</p>
+          <h2 id="home-cases-title">{t("home.cases.title")}</h2>
+          <p className="lede">{t("home.cases.lead")}</p>
+        </div>
+        <div className="case-filters" role="group" aria-label={t("home.cases.filters")}>
+          <button
+            type="button"
+            className="case-filter"
+            aria-pressed={topic === "all"}
+            onClick={() => setTopic("all")}
+          >
+            {t("home.cases.all")}
+          </button>
+          {DEMO_TOPICS.map((item) => (
+            <button
+              key={item}
+              type="button"
+              className="case-filter"
+              aria-pressed={topic === item}
+              onClick={() => setTopic(item)}
+            >
+              {t(DEMO_TOPIC_KEY[item])}
+            </button>
+          ))}
+        </div>
+        <p className="result-count" role="status">
+          {visibleCases.length === 0
+            ? t("home.cases.empty")
+            : t("home.cases.count", { count: String(visibleCases.length) })}
+        </p>
+        <div className="card-list">
+          {visibleCases.map((item) => (
+            <FactCheckCard
+              key={item.slug}
+              card={demoCard(item)}
+              headingLevel={3}
+              href={to(`examples/${item.slug}`)}
+              tags={[{ slug: item.topic, label: t(DEMO_TOPIC_KEY[item.topic]) }]}
+              demo
+              onTag={(slug) => {
+                const match = DEMO_TOPICS.find((itemTopic) => itemTopic === slug);
+                if (match !== undefined) setTopic(match);
+              }}
+            />
+          ))}
         </div>
       </section>
 

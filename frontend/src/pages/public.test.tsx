@@ -80,6 +80,29 @@ describe("home page", () => {
       "/en/about#corrections",
     );
     expect(screen.queryByText(/API status/)).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Cases we've picked so far" })).toBeInTheDocument();
+    expect(screen.getAllByText("DEMO — NOT A VERIFIED CASE").length).toBe(5);
+    expect(screen.getByRole("group", { name: "Filter by category" })).toBeInTheDocument();
+    await expectAccessible();
+  });
+
+  it("filters demonstration reports by category and opens a labeled preview", async () => {
+    installPublicApi();
+    const user = userEvent.setup();
+    renderApp("/en");
+    expect(
+      await screen.findByRole("heading", { name: "Cases we've picked so far" }),
+    ).toBeInTheDocument();
+    const filters = screen.getByRole("group", { name: "Filter by category" });
+    await user.click(within(filters).getByRole("button", { name: "AI-generated content" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Showing 1");
+    const title = "Video does not show Chinese authorities demolishing a Tibetan temple";
+    expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /Placeholder/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: title }));
+    expect(await screen.findByRole("heading", { level: 1, name: title })).toBeInTheDocument();
+    expect(screen.getByText("DEMO — NOT A VERIFIED CASE")).toBeInTheDocument();
+    expect(screen.getByText(/AFP described visual failures/)).toBeInTheDocument();
     await expectAccessible();
   });
 
@@ -124,6 +147,13 @@ describe("search page", () => {
     expect((listCall?.[1] as RequestInit).credentials).toBe("omit");
     expect(screen.getByRole("status")).toHaveTextContent("2 fact-checks shown");
     expect(screen.getAllByText("False").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Cases we've picked so far" })).toBeInTheDocument();
+    expect(screen.getAllByText("DEMO — NOT A VERIFIED CASE")).toHaveLength(5);
+    expect(
+      screen.getByRole("link", {
+        name: "Video does not show Chinese authorities demolishing a Tibetan temple",
+      }),
+    ).toHaveAttribute("href", "/en/examples/demo-temple-clip");
     await expectAccessible();
   });
 
@@ -180,6 +210,7 @@ describe("search page", () => {
     installPublicApi({ cards: [] });
     renderApp("/en/fact-checks?q=zzz");
     expect(await screen.findByText("No fact-checks match these filters.")).toBeInTheDocument();
+    expect(screen.queryByText("DEMO — NOT A VERIFIED CASE")).not.toBeInTheDocument();
     await expectAccessible();
   });
 

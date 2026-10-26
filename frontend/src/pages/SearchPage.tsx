@@ -10,8 +10,10 @@ import { FactCheckCard } from "../components/FactCheckCard";
 import { LoadingState, QueryError } from "../components/QueryState";
 import { SearchControl } from "../components/SearchControl";
 import { TextField } from "../components/TextField";
+import { DEMO_TOPIC_KEY, DEMO_TOPICS, demoCard, matchingDemoCases } from "../demo/cases";
 import { isLocale, type Locale } from "../i18n/translate";
 import { useI18n } from "../i18n/useI18n";
+import { useLocalePath } from "../i18n/useLocalePath";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -52,6 +54,7 @@ function toParams(filters: Filters, locale: Locale): URLSearchParams {
 
 export function SearchPage() {
   const { locale, t } = useI18n();
+  const to = useLocalePath();
   const [searchParams, setSearchParams] = useSearchParams();
   const applied = readFilters(searchParams, locale);
   const [draft, setDraft] = useState<Filters>(applied);
@@ -88,7 +91,9 @@ export function SearchPage() {
   }
 
   const items = list.data?.pages.flatMap((page) => page.items) ?? [];
+  const demos = matchingDemoCases(applied);
   const title = t("search.title");
+  const knownTopics = new Set((topics.data?.items ?? []).map((topic) => topic.slug));
 
   return (
     <>
@@ -139,6 +144,10 @@ export function SearchPage() {
                 value: topic.slug,
                 label: topicName(topic, locale),
               })),
+              ...DEMO_TOPICS.filter((topic) => !knownTopics.has(topic)).map((topic) => ({
+                value: topic,
+                label: t(DEMO_TOPIC_KEY[topic]),
+              })),
             ]}
           />
           <SelectField
@@ -183,11 +192,14 @@ export function SearchPage() {
         {list.isError ? (
           <QueryError messageKey="search.error" onRetry={() => void list.refetch()} />
         ) : null}
-        {list.isSuccess ? (
+        {list.isSuccess && items.length > 0 ? (
           <p className="result-count" role="status" aria-live="polite">
-            {items.length === 0
-              ? t("search.empty")
-              : t("search.count", { count: String(items.length) })}
+            {t("search.count", { count: String(items.length) })}
+          </p>
+        ) : null}
+        {list.isSuccess && items.length === 0 && demos.length === 0 ? (
+          <p className="result-count" role="status" aria-live="polite">
+            {t("search.empty")}
           </p>
         ) : null}
         {items.length > 0 ? (
@@ -207,6 +219,31 @@ export function SearchPage() {
           </Button>
         ) : null}
       </section>
+
+      {demos.length > 0 ? (
+        <section className="demo-library" aria-labelledby="demo-library-title">
+          <div className="home-cases-heading">
+            <p className="home-cases-kicker">{t("home.cases.kicker")}</p>
+            <h2 id="demo-library-title">{t("home.cases.title")}</h2>
+            <p className="lede">{t("home.cases.lead")}</p>
+          </div>
+          <p className="result-count" role={items.length === 0 ? "status" : undefined}>
+            {t("home.cases.count", { count: String(demos.length) })}
+          </p>
+          <div className="card-list">
+            {demos.map((item) => (
+              <FactCheckCard
+                key={item.slug}
+                card={demoCard(item)}
+                headingLevel={3}
+                href={to(`examples/${item.slug}`)}
+                tags={[{ slug: item.topic, label: t(DEMO_TOPIC_KEY[item.topic]) }]}
+                demo
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
     </>
   );
 }

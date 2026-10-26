@@ -1,5 +1,7 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 
 import { fetchCurrentUser, login } from "../api/auth";
 import { setCsrfToken } from "../api/client";
@@ -10,11 +12,12 @@ import { useAuth } from "../auth/useAuth";
 import { DocumentTitle } from "../components/DocumentTitle";
 import { ErrorSummary, type SummaryError } from "../components/ErrorSummary";
 import { EyeIcon, EyeOffIcon } from "../components/icons";
-import { Logo } from "../components/Logo";
 import { TextField } from "../components/TextField";
 import { Button } from "../components/Button";
 import type { MessageKey } from "../i18n/locales/en";
 import { useI18n } from "../i18n/useI18n";
+
+gsap.registerPlugin(useGSAP);
 
 interface FieldIssue {
   id: string;
@@ -98,13 +101,14 @@ export function LoginPage() {
     }
   }
 
+  const slogan = [t("login.slogan.1"), t("login.slogan.2"), t("login.slogan.3")] as const;
+
   return (
     <>
       <DocumentTitle title={t("login.title")} />
       <div className="login-screen">
-        <aside className="login-aside">
-          <Logo inverse />
-          <p className="login-aside-copy">{t("home.lede")}</p>
+        <aside className="login-aside" aria-label={slogan.join(" ")}>
+          <LoginSlogan lines={slogan} />
         </aside>
         <div className="auth-panel">
           <h1>{t("login.title")}</h1>
@@ -159,6 +163,126 @@ export function LoginPage() {
         </div>
       </div>
     </>
+  );
+}
+
+function LoginSlogan({ lines }: { lines: readonly string[] }) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const textRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  const caretRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  const ruleRef = useRef<HTMLSpanElement>(null);
+
+  useGSAP(
+    () => {
+      const motion = gsap.matchMedia();
+
+      motion.add("(prefers-reduced-motion: reduce)", () => {
+        lines.forEach((line, index) => {
+          const node = textRefs.current[index];
+          if (node) node.textContent = line;
+        });
+        gsap.set(caretRefs.current, { autoAlpha: 0 });
+        if (ruleRef.current) {
+          gsap.set(ruleRef.current, { scaleX: 1, transformOrigin: "left center" });
+        }
+      });
+
+      motion.add("(prefers-reduced-motion: no-preference)", () => {
+        const root = rootRef.current;
+        const rule = ruleRef.current;
+        const texts = textRefs.current.filter((node): node is HTMLSpanElement => node !== null);
+        const carets = caretRefs.current.filter((node): node is HTMLSpanElement => node !== null);
+        if (!root || !rule || texts.length !== lines.length || carets.length !== lines.length) return;
+
+        texts.forEach((node) => {
+          node.textContent = "";
+        });
+        gsap.set(carets, { autoAlpha: 0 });
+        gsap.set(rule, { scaleX: 0, transformOrigin: "left center" });
+
+        const blinks = carets.map((caret) =>
+          gsap.fromTo(
+            caret,
+            { opacity: 1 },
+            {
+              opacity: 0,
+              duration: 0.48,
+              repeat: -1,
+              yoyo: true,
+              ease: "none",
+              paused: true,
+              immediateRender: false,
+            },
+          ),
+        );
+        const showCaret = (index: number) => {
+          blinks.forEach((tween, caretIndex) => {
+            tween.pause(0);
+            gsap.set(carets[caretIndex], { autoAlpha: caretIndex === index ? 1 : 0 });
+            if (caretIndex === index) tween.play();
+          });
+        };
+
+        const timeline = gsap.timeline({ repeat: -1 });
+        timeline.fromTo(
+          root,
+          { autoAlpha: 0, y: 12 },
+          { autoAlpha: 1, y: 0, duration: 0.55, ease: "power2.out" },
+        );
+        lines.forEach((line, index) => {
+          const units = [...line];
+          const counter = { count: 0 };
+          timeline.call(() => showCaret(index));
+          timeline.to(counter, {
+            count: units.length,
+            duration: Math.max(units.length * 0.048, 0.55),
+            ease: "none",
+            onUpdate: () => {
+              const node = texts[index];
+              if (node) node.textContent = units.slice(0, Math.round(counter.count)).join("");
+            },
+          });
+          timeline.to({}, { duration: 0.28 });
+        });
+        timeline.call(() => showCaret(-1));
+        timeline.to(rule, { scaleX: 1, duration: 0.5, ease: "power2.out" });
+        timeline.to({}, { duration: 1.8 });
+        timeline.to(root, { autoAlpha: 0, y: -10, duration: 0.45, ease: "power1.in" });
+        timeline.set(root, { y: 0 });
+        timeline.call(() => {
+          texts.forEach((node) => {
+            node.textContent = "";
+          });
+          gsap.set(rule, { scaleX: 0 });
+        });
+      });
+
+      return () => motion.revert();
+    },
+    { scope: rootRef, dependencies: [lines.join("\n")], revertOnUpdate: true },
+  );
+
+  return (
+    <div className="login-slogan" ref={rootRef} aria-hidden="true">
+      {lines.map((line, index) => (
+        <p className="login-slogan-line" key={line}>
+          <span
+            ref={(node) => {
+              textRefs.current[index] = node;
+            }}
+          >
+            {line}
+          </span>
+          <span
+            className="login-slogan-caret"
+            ref={(node) => {
+              caretRefs.current[index] = node;
+            }}
+          />
+        </p>
+      ))}
+      <span className="login-slogan-rule" ref={ruleRef} />
+    </div>
   );
 }
 

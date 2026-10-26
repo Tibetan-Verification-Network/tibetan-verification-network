@@ -27,6 +27,7 @@ import { EditorialHome } from "./pages/EditorialHome";
 import { AboutPage } from "./pages/AboutPage";
 import { ArticlePage } from "./pages/ArticlePage";
 import { ArticleVersionPage } from "./pages/ArticleVersionPage";
+import { ExamplePage } from "./pages/ExamplePage";
 import { Home } from "./pages/Home";
 import { MembershipPage } from "./pages/MembershipPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -45,6 +46,7 @@ function publicRoutes(locale: Locale) {
       <Route index element={<Home />} />
       <Route path="fact-checks" element={<SearchPage />} />
       <Route path="fact-checks/:slug" element={<ArticlePage />} />
+      <Route path="examples/:slug" element={<ExamplePage />} />
       <Route path="fact-checks/:slug/versions/:n" element={<ArticleVersionPage />} />
       <Route path="topics" element={<TopicsPage />} />
       <Route path="topics/:slug" element={<TopicPage />} />
