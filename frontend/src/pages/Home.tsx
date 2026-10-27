@@ -260,7 +260,7 @@ export function Home() {
         const fitObserver =
           typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fitGhost);
         fitObserver?.observe(ghostWrap ?? hero);
-        function syncGhost() {
+        const syncGhost = () => {
           const busy = input.value.trim() !== "" || document.activeElement === input;
           if (!ghostWrap) return;
           if (busy) {
@@ -270,7 +270,7 @@ export function Home() {
             gsap.set(ghostWrap, { autoAlpha: 1 });
             typing.play();
           }
-        }
+        };
 
         input.addEventListener("focus", syncGhost);
         input.addEventListener("blur", syncGhost);
