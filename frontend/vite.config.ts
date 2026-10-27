@@ -12,6 +12,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, repoRoot, "");
   const passwordMinLength =
     env.VITE_PASSWORD_MIN_LENGTH?.trim() || env.PASSWORD_MIN_LENGTH?.trim() || String(12);
+  // On Vercel the API is served from the same origin under /api (see vercel.json).
+  const apiBaseUrl = env.VITE_API_BASE_URL?.trim() || (process.env.VERCEL ? "/" : undefined);
 
   return {
     plugins: [tailwindcss(), react()],
@@ -23,6 +25,9 @@ export default defineConfig(({ mode }) => {
     envDir: repoRoot,
     define: {
       "import.meta.env.VITE_PASSWORD_MIN_LENGTH": JSON.stringify(passwordMinLength),
+      ...(apiBaseUrl !== undefined
+        ? { "import.meta.env.VITE_API_BASE_URL": JSON.stringify(apiBaseUrl) }
+        : {}),
     },
     server: {
       host: "0.0.0.0",

@@ -19,6 +19,11 @@ describe("readApiBaseUrl", () => {
     );
   });
 
+  it("treats / as the page's own origin", () => {
+    expect(readApiBaseUrl("/", "https://tvn.example.org")).toBe("https://tvn.example.org");
+    expect(readApiBaseUrl(" / ", "http://localhost:3000")).toBe("http://localhost:3000");
+  });
+
   it("rejects credentials without repeating them", () => {
     const value = "http://auditor:super-secret-password@localhost:8000";
     expect(() => readApiBaseUrl(value)).toThrow(ConfigurationError);

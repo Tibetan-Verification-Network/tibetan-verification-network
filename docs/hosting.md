@@ -37,3 +37,20 @@ Use separate databases, object-storage buckets, and secrets for staging and prod
 ## Budget
 
 Re-check provider pricing when you pick a host. The product target remains roughly US$10–30/month for early traffic; exact numbers depend on the vendors you select.
+
+## Vercel (services)
+
+`vercel.json` at the repository root deploys both apps as one Vercel project on one domain:
+
+| Service                             | Root        | Public path                                                      |
+| ----------------------------------- | ----------- | ---------------------------------------------------------------- |
+| `backend` (FastAPI, `app.main:app`) | `backend/`  | `/api/*` (the service sees the full `/api/v1/...` path)          |
+| `frontend` (Vite SPA)               | `frontend/` | everything else, with an `index.html` fallback for client routes |
+
+- The SPA calls the API on its own origin. During a Vercel build `VITE_API_BASE_URL` defaults to `/` (same origin), so it does not need to be set.
+- Security headers from `frontend/public/_headers` are repeated in `vercel.json`, because Vercel does not read `_headers`. `connect-src` is `'self'`.
+- Set `CORS_ORIGINS` on the project to the site's HTTPS origin (for example `https://tvn.example.org`). Staff mutations check `Origin` against it.
+- Set `DATABASE_URL`, `STORAGE_*`, `SUBMISSION_SUBMITTER_HMAC_KEY` and `ENVIRONMENT=production` as project environment variables. Run `alembic upgrade head` against the database before you deploy.
+- `/health` and `/ready` are not under `/api`, so they are not public on Vercel.
+- The Cloudflare Pages Functions in `frontend/functions/` (per-page meta tags, `robots.txt`, `sitemap.xml`) do not run on Vercel.
+- Test locally with `vercel dev`.

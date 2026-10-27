@@ -7,11 +7,19 @@ export class ConfigurationError extends Error {
   }
 }
 
+/**
+ * Returns the API origin. The value "/" means the API is served from the site's own origin
+ * (for example on Vercel, where `/api/*` is routed to the backend service).
+ */
 export function readApiBaseUrl(
   value: string | undefined = import.meta.env.VITE_API_BASE_URL,
+  pageOrigin: string = globalThis.location?.origin ?? "",
 ): string {
   if (value === undefined || value.trim() === "") {
     throw new ConfigurationError("API base URL is not configured");
+  }
+  if (value.trim() === "/") {
+    value = pageOrigin;
   }
 
   let url: URL;
