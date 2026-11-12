@@ -72,20 +72,22 @@ export function TextAreaField({
 export function SelectField({
   id,
   label,
+  hint,
   options,
   className,
   ...props
 }: {
   id: string;
   label: string;
+  hint?: ReactNode;
   options: readonly { value: string; label: string }[];
 } & SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <div className="field">
-      <Label htmlFor={id}>{label}</Label>
+    <FieldFrame id={id} label={label} hint={hint}>
       <select
         id={id}
         data-slot="select"
+        aria-describedby={describedBy(id, hint, undefined)}
         className={cn(
           "flex h-11 w-full rounded-lg border border-input bg-card px-3 text-base text-foreground shadow-sm",
           "disabled:cursor-not-allowed disabled:opacity-50",
@@ -99,7 +101,7 @@ export function SelectField({
           </option>
         ))}
       </select>
-    </div>
+    </FieldFrame>
   );
 }
 

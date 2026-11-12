@@ -7,6 +7,9 @@ against a migrated database, with the dev dependency group installed:
 
     uv run python scripts/seed_e2e.py
 
+Seeded topics (all active, for public browse and submit): `environment`, `human-rights`,
+`history-and-culture`, `health-and-medicine`, `misinformation-and-media`, `politics-and-governance`.
+
 Seeded fact-checks (all slugs start with `e2e-`):
 
 * `e2e-river`      published in English and Tibetan, topic "environment"
@@ -99,6 +102,78 @@ WITHDRAWN_EN = Article(
     explanation="No reliable confirmation was found.",
     analysis="The only source was later retracted.",
     limitations="The original poster could not be reached.",
+)
+
+# Active public browse topics for e2e and local submit/search dropdowns.
+SEED_TOPICS: tuple[dict[str, Any], ...] = (
+    {
+        "slug": "environment",
+        "name_en": "Environment",
+        "name_bo": "ཁོར་ཡུག",
+        "description_en": "Claims about land, water, and climate.",
+        "description_bo": None,
+        "position": 1,
+    },
+    {
+        "slug": "human-rights",
+        "name_en": "Human rights",
+        "name_bo": "མིའི་ཐོབ་ཐང་",
+        "description_en": (
+            "Claims about detention, freedom of expression, religious practice, "
+            "and other human-rights issues."
+        ),
+        "description_bo": (
+            "བཙུན་གནས་དང་ཞལ་གྱི་རང་དབང་། ཆོས་ལུགས་གྱི་སྤྱོད་པ། "
+            "མིའི་ཐོབ་ཐང་གི་གླེང་གཞི་འདྲི་བརྩད་ཀྱི་ཁོངས་སུ་གཏོགས་པ།"
+        ),
+        "position": 2,
+    },
+    {
+        "slug": "history-and-culture",
+        "name_en": "History and culture",
+        "name_bo": "ལོ་རྒྱུས་དང་རིག་གནས་",
+        "description_en": "Claims about Tibetan history, language, arts, and cultural heritage.",
+        "description_bo": "བོད་ཀྱི་ལོ་རྒྱུས་དང་སྐད་ཡིག་། སྒྱུ་རྩལ་དང་རིག་གནས་ཀྱི་ཤ་ཚུགས་སྐོར་གྱི་གླེང་གཞི།",
+        "position": 3,
+    },
+    {
+        "slug": "health-and-medicine",
+        "name_en": "Health and medicine",
+        "name_bo": "བདེ་ཐང་དང་སྨན་བཅོས་",
+        "description_en": (
+            "Claims about disease outbreaks, vaccines, traditional medicine, and public health policy."
+        ),
+        "description_bo": (
+            "ནད་ཡམས། འབུ་སྨན། གསོ་རིག་སོགས་དམངས་ཁམས་ཀྱི་བདེ་ཐང་སྲིད་བྱུས་སྐོར་གྱི་གླེང་གཞི།"
+        ),
+        "position": 4,
+    },
+    {
+        "slug": "misinformation-and-media",
+        "name_en": "Misinformation and media",
+        "name_bo": "ཡན་ལག་བརྙན་འཕྲིན་དང་ཆ་འཕྲིན་ཡང་དག་མིན་",
+        "description_en": (
+            "Viral posts, doctored images or video, impersonation, and coordinated online campaigns."
+        ),
+        "description_bo": (
+            "ཡར་ཁ་སིམ། བཟོ་བཅོས་བྱས་པའི་པར་རིས་དང་བརྙན་ཟློས། སྒེར་མིང་བཟུང་བ། "
+            "གྲོགས་པོ་མང་པོས་མཉམ་དུ་སྤེལ་བའི་དྲ་ཐོག་བརྙན་འཕྲིན་སོགས།"
+        ),
+        "position": 5,
+    },
+    {
+        "slug": "politics-and-governance",
+        "name_en": "Politics and governance",
+        "name_bo": "ཆབ་སྲིད་དང་སྲིད་འཛིན་",
+        "description_en": (
+            "Claims about officials, laws, elections, borders, and government statements."
+        ),
+        "description_bo": (
+            "དཔོན་རིགས། ཁྲིམས་ལུགས། འོས་བླངས། མཐའ་འཁོར། "
+            "གཞུང་གི་གསུང་བཤད་སོགས་སྐོར་གྱི་གླེང་གཞི།"
+        ),
+        "position": 6,
+    },
 )
 
 
@@ -222,27 +297,36 @@ async def _seed(seeder: Seeder, factory: async_sessionmaker[AsyncSession]) -> No
                 "internal_reason": "Seeded e2e withdrawal",
             },
         )
+    topic_slugs = ", ".join(item["slug"] for item in SEED_TOPICS)
+    print(f"Seeded topics: {topic_slugs}")
     print("Seeded e2e fact-checks: e2e-river, e2e-pending, e2e-withdrawn")
 
 
 async def _ensure_topic(seeder: Seeder) -> str:
+    by_slug = await _ensure_topics(seeder)
+    try:
+        return by_slug["environment"]
+    except KeyError as exc:
+        raise RuntimeError("environment topic missing after seed") from exc
+
+
+async def _ensure_topics(seeder: Seeder) -> dict[str, str]:
+    """Create missing seed topics; return slug -> id for each configured topic."""
     listing = await seeder.call(EDITOR_EMAIL, "GET", "/api/v1/editorial/topics")
-    for topic in listing["items"]:
-        if topic["slug"] == "environment":
-            return str(topic["id"])
-    created = await seeder.call(
-        EDITOR_EMAIL,
-        "POST",
-        "/api/v1/editorial/topics",
-        json={
-            "slug": "environment",
-            "name_en": "Environment",
-            "name_bo": "ཁོར་ཡུག",
-            "description_en": "Claims about land, water, and climate.",
-            "position": 1,
-        },
-    )
-    return str(created["id"])
+    by_slug = {topic["slug"]: str(topic["id"]) for topic in listing["items"]}
+    for spec in SEED_TOPICS:
+        slug = spec["slug"]
+        if slug in by_slug:
+            continue
+        payload = {key: value for key, value in spec.items() if value is not None}
+        created = await seeder.call(
+            EDITOR_EMAIL,
+            "POST",
+            "/api/v1/editorial/topics",
+            json=payload,
+        )
+        by_slug[slug] = str(created["id"])
+    return by_slug
 
 
 async def _publish_article(

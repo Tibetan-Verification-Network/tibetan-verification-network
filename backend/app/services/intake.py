@@ -23,6 +23,7 @@ from app.db.enums import InvestigationAssignmentRole, RoleCode, SubmissionChanne
 from app.models.assignments import InvestigationAssignment
 from app.models.identity import User, UserRole
 from app.models.intake import Claim, Submission, SubmissionContact
+from app.models.topics import Topic
 from app.models.research import Investigation
 from app.schemas.intake import (
     ClaimDetailResponse,
@@ -46,6 +47,25 @@ from app.workflow.http import http_conflict_from_guard, http_conflict_from_trans
 
 class IntakeValidationError(ValueError):
     """Client-facing intake validation failure."""
+
+
+async def context_with_suggested_topic(
+    session: AsyncSession,
+    *,
+    context_text: str | None,
+    topic_slug: str | None,
+) -> str | None:
+    if topic_slug is None or topic_slug.strip() == "":
+        return context_text
+    slug = topic_slug.strip()
+    topic = await session.scalar(select(Topic).where(Topic.slug == slug, Topic.is_active.is_(True)))
+    if topic is None:
+        return context_text
+    labels = [part.strip() for part in [topic.name_en, topic.name_bo] if part and part.strip()]
+    line = f"Suggested topic: {' / '.join(labels) if labels else slug} ({slug})"
+    if context_text is not None and context_text.strip() != "":
+        return f"{line}\n\n{context_text.strip()}"
+    return line
 
 
 def submitter_key_hash(client_ip: str, settings: Settings) -> str:
@@ -121,10 +141,15 @@ async def accept_public_submission(
     if duplicate_exists:
         return receipt_id
 
+    context_text = await context_with_suggested_topic(
+        session,
+        context_text=payload.context_text,
+        topic_slug=payload.topic_slug,
+    )
     submission = Submission(
         id=receipt_id,
         claim_text=payload.claim_text,
-        context_text=payload.context_text,
+        context_text=context_text,
         source_url=normalized_url,
         channel=SubmissionChannel.PUBLIC_FORM,
         workflow_status=WorkflowStatus.INBOX,

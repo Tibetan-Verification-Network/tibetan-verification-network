@@ -112,6 +112,7 @@ GitHub Actions runs the same checks in independent jobs. See [docs/testing.md](d
 - [Data model](docs/data-model.md) — relationships and privacy boundaries
 - [SPA authentication contract](docs/spa-auth-contract.md) — cookie and header rules
 - [Hosting requirements](docs/hosting.md) — production env contract (provider-agnostic)
+- [AWS deployment](docs/aws-deployment.md) — EC2, optional RDS, free tier and cost guardrails
 - [Runbook](docs/runbook.md) — deploy, rollback, restore, incidents
 - [Accessibility testing](docs/accessibility-testing.md) — automated and manual matrix
 

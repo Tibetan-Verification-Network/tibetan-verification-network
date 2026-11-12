@@ -4,6 +4,7 @@ export interface SubmissionInput {
   claimText: string;
   contextText: string;
   sourceUrl: string;
+  topicSlug: string;
   contactName: string;
   contactEmail: string;
   contactPhone: string;
@@ -26,6 +27,7 @@ export function buildSubmissionBody(input: SubmissionInput): Record<string, unkn
     claim_text: input.claimText.trim(),
     context_text: optional(input.contextText),
     source_url: optional(input.sourceUrl),
+    topic_slug: optional(input.topicSlug),
     contact: hasContact ? { name, email, phone } : undefined,
     privacy_consent: input.privacyConsent,
     website: input.website,

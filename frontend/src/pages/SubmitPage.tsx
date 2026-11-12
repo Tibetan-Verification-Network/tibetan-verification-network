@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
+import { topicName } from "../api/public";
+import { useTopics } from "../api/publicQueries";
 import { submitClaim } from "../api/submissions";
 import { ApiError } from "../api/types";
 import { useAuth } from "../auth/useAuth";
@@ -7,7 +9,7 @@ import { Alert } from "../components/Alert";
 import { Button } from "../components/Button";
 import { DocumentTitle } from "../components/DocumentTitle";
 import { ErrorSummary, type SummaryError } from "../components/ErrorSummary";
-import { CheckboxField, TextAreaField } from "../components/Fields";
+import { CheckboxField, SelectField, TextAreaField } from "../components/Fields";
 import { TextField } from "../components/TextField";
 import { Turnstile } from "../components/Turnstile";
 import { readTurnstileSiteKey } from "../config";
@@ -16,8 +18,9 @@ import { useI18n } from "../i18n/useI18n";
 import { EMPTY, SERVER_FIELDS, validate, type FieldId, type Values } from "./submitValidation";
 
 export function SubmitPage() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const { baseUrl } = useAuth();
+  const topics = useTopics();
   const siteKey = useMemo(() => readTurnstileSiteKey(), []);
   const [values, setValues] = useState<Values>(EMPTY);
   const [problems, setProblems] = useState<{ id: FieldId; message: string }[]>([]);
@@ -150,6 +153,20 @@ export function SubmitPage() {
           autoComplete="off"
           value={values.sourceUrl}
           onChange={(event) => set("sourceUrl", event.target.value)}
+        />
+        <SelectField
+          id="submit-topic"
+          label={t("submit.topic")}
+          hint={t("submit.topicHint")}
+          value={values.topicSlug}
+          onChange={(event) => set("topicSlug", event.target.value)}
+          options={[
+            { value: "", label: t("submit.topicNone") },
+            ...(topics.data?.items ?? []).map((topic) => ({
+              value: topic.slug,
+              label: topicName(topic, locale),
+            })),
+          ]}
         />
 
         <fieldset className="filters">

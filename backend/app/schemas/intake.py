@@ -25,6 +25,7 @@ class PublicSubmissionRequest(BaseModel):
     claim_text: str = Field(min_length=10, max_length=5000)
     context_text: str | None = Field(default=None, max_length=5000)
     source_url: str | None = Field(default=None, max_length=2048)
+    topic_slug: str | None = Field(default=None, max_length=120)
     contact: SubmissionContactInput | None = None
     privacy_consent: bool = False
     website: str = Field(default="", max_length=200)

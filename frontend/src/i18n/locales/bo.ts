@@ -185,6 +185,9 @@ export const bo: Record<PublicMessageKey, string> & Partial<Record<MessageKey, s
   "submit.contextHint": "འདེམས་རུང་། དཔེར་ན་དྲ་ཚིགས་དང་སྡེ་ཚན། བརྒྱུད་འཕྲིན་སོགས།",
   "submit.sourceUrl": "གླེང་གཞིའི་འབྲེལ་ཐག",
   "submit.sourceUrlHint": "འདེམས་རུང་། http:// ཡང་ན་ https:// ནས་འགོ་ཚུགས་པའི་དྲ་ཁ།",
+  "submit.topic": "བརྗོད་གཞི།",
+  "submit.topicHint": "འདེམས་རུང་། གླེང་གཞི་འདིར་འཚམ་པའི་བརྗོད་གཞི་ཞིག་འདེམས།",
+  "submit.topicNone": "བརྗོད་གཞི་མ་འདེམས།",
   "submit.contactTitle": "འབྲེལ་འདྲིའི་ཁ་བྱང་།",
   "submit.contactHint":
     "འདེམས་རུང་། རྩོམ་སྒྲིག་པས་གླེང་གཞི་འདིའི་ཆེད་དུ་འབྲེལ་བ་བྱེད་པ་ལ་དགའ་ན་ཁོ་ན་སྤྲོད།",

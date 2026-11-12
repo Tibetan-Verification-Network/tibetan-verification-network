@@ -181,6 +181,9 @@ export const publicEn = {
   "submit.contextHint": "Optional. For example the website, group, or broadcast.",
   "submit.sourceUrl": "Link to the claim",
   "submit.sourceUrlHint": "Optional. A web address starting with http:// or https://.",
+  "submit.topic": "Topic",
+  "submit.topicHint": "Optional. Choose the subject that best fits this claim.",
+  "submit.topicNone": "No topic selected",
   "submit.contactTitle": "Contact details",
   "submit.contactHint":
     "Optional. Only give these if you are happy for an editor to contact you about this claim.",

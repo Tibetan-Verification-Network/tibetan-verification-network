@@ -8,6 +8,7 @@ export interface Values {
   claimText: string;
   contextText: string;
   sourceUrl: string;
+  topicSlug: string;
   contactName: string;
   contactEmail: string;
   contactPhone: string;
@@ -19,6 +20,7 @@ export const EMPTY: Values = {
   claimText: "",
   contextText: "",
   sourceUrl: "",
+  topicSlug: "",
   contactName: "",
   contactEmail: "",
   contactPhone: "",
