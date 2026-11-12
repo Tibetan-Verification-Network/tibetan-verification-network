@@ -78,6 +78,7 @@ async def _full_publish(
     assert assigned.status_code == 200, assigned.text
     await client.post(
         f"/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/mark-ready",
+        json={"approver_id": str(approver.id)},
         headers=csrf_headers(editor_session["csrf_token"]),
     )
     approver_session = await login(client, email=approver.email, password=STRONG_PASSWORD)
@@ -86,6 +87,7 @@ async def _full_publish(
         json={"expected_revision": revision},
         headers=csrf_headers(approver_session["csrf_token"]),
     )
+    editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
     detail = await client.get(
         f"/api/v1/editorial/factchecks/{fact_check_id}",
         headers=csrf_headers(editor_session["csrf_token"]),
@@ -96,10 +98,10 @@ async def _full_publish(
     published = await client.post(
         f"/api/v1/editorial/factchecks/{fact_check_id}/languages/{language}/publish",
         json={},
-        headers=csrf_headers(approver_session["csrf_token"]),
+        headers=csrf_headers(editor_session["csrf_token"]),
     )
     assert published.status_code == 200, published.text
-    return slug, fact_check_id, approver
+    return slug, fact_check_id, editor
 
 
 @pytest.mark.usefixtures("db_session_for_api")
@@ -126,17 +128,17 @@ async def test_withdrawn_removed_from_list_but_detail_shows_notice(
     db_session_for_api: AsyncSession,
 ) -> None:
     async with api_client_factory() as client:
-        slug, fact_check_id, approver = await _full_publish(
+        slug, fact_check_id, editor = await _full_publish(
             client, db_session_for_api, language="en"
         )
-        approver_session = await login(client, email=approver.email, password=STRONG_PASSWORD)
+        editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
         withdrawn = await client.post(
             f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/withdraw",
             json={
                 "public_notice": "Withdrawn for review.",
                 "internal_reason": "Needs re-check",
             },
-            headers=csrf_headers(approver_session["csrf_token"]),
+            headers=csrf_headers(editor_session["csrf_token"]),
         )
         assert withdrawn.status_code == 200, withdrawn.text
         listed = await client.get("/api/v1/factchecks?lang=en")

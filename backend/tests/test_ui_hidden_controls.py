@@ -80,7 +80,12 @@ def _attempts(
         Attempt(researcher, "PUT", f"{fc}/topics", {"topic_ids": []}),
         Attempt(researcher, "POST", f"{inv}/assignments", {"user_id": str(someone)}),
         Attempt(researcher, "POST", f"{lang}/reviews", {"comments": "Looks fine."}),
-        Attempt(researcher, "POST", f"{lang}/mark-ready"),
+        Attempt(
+            researcher,
+            "POST",
+            f"{lang}/mark-ready",
+            {"approver_id": str(someone)},
+        ),
         Attempt(researcher, "POST", f"{lang}/approve", {"expected_revision": 1}),
         Attempt(researcher, "GET", f"{lang}/publish-preview"),
         Attempt(researcher, "POST", f"{lang}/publish", {}),
@@ -122,7 +127,7 @@ def _attempts(
         ),
         Attempt(approver, "PATCH", f"{lang}", {"expected_revision": 0, "title": "Edited"}),
         Attempt(approver, "POST", f"{lang}/submit-for-review"),
-        Attempt(approver, "POST", f"{lang}/mark-ready"),
+        Attempt(approver, "POST", f"{lang}/mark-ready", {"approver_id": str(someone)}),
         Attempt(approver, "POST", f"{inv}/evidence", {"excerpt": "x"}),
         Attempt(
             approver,
@@ -130,13 +135,14 @@ def _attempts(
             "/api/v1/admin/invites",
             {"email": "a@example.org", "role_codes": ["editor"]},
         ),
-        # Editors do not approve, publish, correct, or withdraw.
+        # Editors do not approve; publication happens after approval, not at draft.
         Attempt(editor, "POST", f"{lang}/approve", {"expected_revision": 1}),
-        Attempt(editor, "GET", f"{lang}/publish-preview"),
-        Attempt(editor, "POST", f"{lang}/publish", {}),
-        Attempt(editor, "POST", f"{lang}/corrections", {"kind": "correction", **reason}),
+        # Approvers do not publish, correct, or withdraw.
+        Attempt(approver, "GET", f"{lang}/publish-preview"),
+        Attempt(approver, "POST", f"{lang}/publish", {}),
+        Attempt(approver, "POST", f"{lang}/corrections", {"kind": "correction", **reason}),
         Attempt(
-            editor,
+            approver,
             "POST",
             f"{lang}/withdraw",
             {"public_notice": "Notice", "internal_reason": "Why"},

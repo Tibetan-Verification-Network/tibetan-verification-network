@@ -52,6 +52,11 @@ export function LanguagePage() {
         const editable =
           can.editDraft(user) && (status === "draft" || status === "changes_requested");
         const slug = factCheck.data?.fact_check.public_slug ?? null;
+        const languageSummary = factCheck.data?.languages.find((entry) => entry.language === language);
+        const canApproveThisRevision =
+          user !== null && languageSummary?.designated_approver_id === user.id;
+        const canPublishThisRevision =
+          user !== null && languageSummary?.marking_editor_id === user.id;
         return (
           <>
             <DocumentTitle title={data.title ?? t("factcheck.untitled")} />
@@ -83,7 +88,14 @@ export function LanguagePage() {
               onDirtyChange={setDirty}
             />
             <ReviewPanel draft={data} status={status} dirty={dirty} />
-            <PublishPanel draft={data} status={status} slug={slug} />
+            <PublishPanel
+              draft={data}
+              status={status}
+              slug={slug}
+              designatedApproverId={languageSummary?.designated_approver_id ?? null}
+              canApproveThisRevision={canApproveThisRevision}
+              canPublishThisRevision={canPublishThisRevision}
+            />
             <VersionsPanel id={id} language={language} />
             {factCheck.data?.languages.find((entry) => entry.language === language) ? (
               <AuditPanel

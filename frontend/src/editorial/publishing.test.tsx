@@ -23,7 +23,7 @@ describe("approve", () => {
     await user.click(within(dialog).getByRole("button", { name: "Approve revision 3" }));
     expect(api.callsTo("POST", /approve$/)[0]?.body).toEqual({ expected_revision: 3 });
     expect(await screen.findByText("Approved.")).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "Review and publish" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Review and publish" })).not.toBeInTheDocument();
   });
 
   it("does not approve when the revision moved on", async () => {
@@ -53,7 +53,7 @@ describe("approve", () => {
 
 describe("publish", () => {
   it("shows the public snapshot and needs the slug typed before publishing", async () => {
-    const api = installEditorialApi({ languageStatus: "approved", user: STAFF.approver });
+    const api = installEditorialApi({ languageStatus: "approved", user: STAFF.editor });
     const user = userEvent.setup();
     renderApp(EN);
     await user.click(await screen.findByRole("button", { name: "Review and publish" }));
@@ -76,7 +76,7 @@ describe("publish", () => {
   });
 
   it("closes with Escape and returns focus to the button that opened it", async () => {
-    installEditorialApi({ languageStatus: "approved", user: STAFF.approver });
+    installEditorialApi({ languageStatus: "approved", user: STAFF.editor });
     const user = userEvent.setup();
     renderApp(EN);
     const opener = await screen.findByRole("button", { name: "Review and publish" });
@@ -90,7 +90,7 @@ describe("publish", () => {
   it("blocks publishing while the preview reports readiness issues", async () => {
     installEditorialApi({
       languageStatus: "approved",
-      user: STAFF.approver,
+      user: STAFF.editor,
       override: (call) =>
         call.path.endsWith("/publish-preview")
           ? {
@@ -117,7 +117,7 @@ describe("publish", () => {
 
 describe("corrections and withdrawal", () => {
   async function publishedArticle() {
-    const api = installEditorialApi({ languageStatus: "published", user: STAFF.approver });
+    const api = installEditorialApi({ languageStatus: "published", user: STAFF.editor });
     api.state.versions.push({
       version_number: 1,
       kind: "initial",
@@ -188,8 +188,8 @@ describe("corrections and withdrawal", () => {
     expect(await screen.findByText("Checksum does not match")).toBeInTheDocument();
   });
 
-  it("does not show correction or withdrawal to editors", async () => {
-    installEditorialApi({ languageStatus: "published", user: STAFF.editor });
+  it("does not show correction or withdrawal to approvers", async () => {
+    installEditorialApi({ languageStatus: "published", user: STAFF.approver });
     renderApp(EN);
     await screen.findByRole("heading", { name: "Published versions" });
     expect(screen.queryByRole("button", { name: "Withdraw" })).not.toBeInTheDocument();

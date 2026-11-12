@@ -321,6 +321,15 @@ export function useApprovalQueue(enabled = true) {
   );
 }
 
+export function usePublishQueue(enabled = true) {
+  return useEditorialPages<QueueItem>(
+    ["publish-queue"],
+    "/api/v1/editorial/publish-queue",
+    { limit: 50 },
+    enabled,
+  );
+}
+
 export function useAllTopics(enabled = true) {
   return useEditorialQuery<{ items: EditorialTopic[] }>(["topics"], "/api/v1/editorial/topics", {
     enabled,

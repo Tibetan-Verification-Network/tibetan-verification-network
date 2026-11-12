@@ -1,10 +1,15 @@
 import { useState } from "react";
 
-import { languagePath, useEditorialMutation, useReviews } from "../../api/editorial/queries";
-import type { Draft, LanguageStatus, Review } from "../../api/editorial/types";
+import {
+  languagePath,
+  useEditorialMutation,
+  useReviews,
+  useStaffDirectory,
+} from "../../api/editorial/queries";
+import type { Draft, LanguageStatus, Review, StaffMember } from "../../api/editorial/types";
 import { useAuth } from "../../auth/useAuth";
 import { Button } from "../../components/Button";
-import { TextAreaField } from "../../components/Fields";
+import { SelectField, TextAreaField } from "../../components/Fields";
 import { formatDate } from "../../i18n/format";
 import { useI18n } from "../../i18n/useI18n";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -14,6 +19,10 @@ import { can } from "../roles";
 import { useUserNames } from "../useUserNames";
 
 type Reasoned = "request_changes" | "reopen";
+
+function activeApprovers(members: StaffMember[]): StaffMember[] {
+  return members.filter((member) => member.roles.includes("approver"));
+}
 
 function Thread({ reviews }: { reviews: Review[] }) {
   const { t, locale } = useI18n();
@@ -65,6 +74,9 @@ export function ReviewPanel({
   const [reasoned, setReasoned] = useState<Reasoned | null>(null);
   const [reason, setReason] = useState("");
   const [confirmReady, setConfirmReady] = useState(false);
+  const [approverId, setApproverId] = useState("");
+  const staff = useStaffDirectory(confirmReady);
+  const approvers = activeApprovers(staff.data?.items ?? []);
 
   const addComment = useEditorialMutation<string, Review>({
     success: "review.commented",
@@ -75,10 +87,14 @@ export function ReviewPanel({
     success: "review.submitted",
     mutationFn: (_, api) => api.send("POST", `${path}/submit-for-review`),
   });
-  const markReady = useEditorialMutation<void, Draft>({
+  const markReady = useEditorialMutation<string, Draft>({
     success: "review.markedReady",
-    mutationFn: (_, api) => api.send<Draft>("POST", `${path}/mark-ready`),
-    onSuccess: () => setConfirmReady(false),
+    mutationFn: (selectedApproverId, api) =>
+      api.send<Draft>("POST", `${path}/mark-ready`, { approver_id: selectedApproverId }),
+    onSuccess: () => {
+      setConfirmReady(false);
+      setApproverId("");
+    },
   });
   const reasonAction = useEditorialMutation<{ action: Reasoned; reason: string }, Draft>({
     mutationFn: ({ action, reason: text }, api) =>
@@ -171,14 +187,31 @@ export function ReviewPanel({
             revision: String(draft.current_revision_number),
           })}
           confirmLabel={t("review.markReady")}
-          pending={markReady.isPending}
-          error={<EditorialError error={markReady.error} />}
+          confirmDisabled={approverId === ""}
+          pending={markReady.isPending || staff.isPending}
+          error={<EditorialError error={markReady.error ?? staff.error} />}
           onCancel={() => {
             markReady.reset();
             setConfirmReady(false);
+            setApproverId("");
           }}
-          onConfirm={() => markReady.mutate()}
-        />
+          onConfirm={() => markReady.mutate(approverId)}
+        >
+          <SelectField
+            id="mark-ready-approver"
+            label={t("review.approverLabel")}
+            hint={t("review.approverHint")}
+            value={approverId}
+            onChange={(event) => setApproverId(event.target.value)}
+            options={[
+              { value: "", label: t("review.chooseApprover") },
+              ...approvers.map((member) => ({
+                value: member.id,
+                label: member.display_name ?? member.email,
+              })),
+            ]}
+          />
+        </ConfirmDialog>
       ) : null}
       {reasoned !== null ? (
         <ConfirmDialog

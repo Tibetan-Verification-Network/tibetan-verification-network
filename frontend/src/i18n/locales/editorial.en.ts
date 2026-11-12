@@ -5,6 +5,7 @@
 export const editorialEn = {
   /* Navigation and shared */
   "nav.approvals": "Approvals",
+  "nav.readyToPublish": "Ready to publish",
   "nav.admin": "Staff accounts",
   "editorial.dismiss": "Dismiss",
   "editorial.working": "Working…",
@@ -57,6 +58,10 @@ export const editorialEn = {
     "You marked this ready, so a different person must approve it.",
   "editorial.conflict.not_approving_reviewer":
     "Only the person who approved this revision can publish it.",
+  "editorial.conflict.not_designated_approver":
+    "Only the domain expert selected at mark-ready may approve this revision.",
+  "editorial.conflict.not_ready_marking_editor":
+    "Only the editor who marked this revision ready may publish it.",
   "editorial.conflict.investigation_frozen":
     "The investigation is frozen while its fact-check is in review or published.",
 
@@ -122,6 +127,11 @@ export const editorialEn = {
   "dashboard.review.empty": "Nothing is waiting for review.",
   "dashboard.approvals": "Waiting for your approval",
   "dashboard.approvals.empty": "Nothing is waiting for approval.",
+  "dashboard.readyToPublish": "Ready for you to publish",
+  "dashboard.readyToPublish.empty": "Nothing is approved and waiting for you to publish.",
+  "publishQueue.lead":
+    "Approved revisions you marked ready. Only you can publish these language versions.",
+  "publishQueue.empty": "Nothing is waiting for you to publish.",
 
   /* Inbox and submission */
   "inbox.lead": "Claims sent in by the public and added by staff. Triage each one.",
@@ -378,9 +388,10 @@ export const editorialEn = {
   "language.next.in_review": "An editor reviews it and marks it ready for approval.",
   "language.next.changes_requested":
     "Reopen the draft, make the requested changes, and submit again.",
-  "language.next.ready_for_approval": "An approver approves this exact revision.",
-  "language.next.approved": "The approver publishes it.",
-  "language.next.published": "Live. Start a correction or withdraw it if needed.",
+  "language.next.ready_for_approval":
+    "The selected domain expert approves this exact revision.",
+  "language.next.approved": "The editor who marked it ready publishes it.",
+  "language.next.published": "Live. An editor can start a correction or withdraw it if needed.",
   "language.next.withdrawn": "Withdrawn. Readers see a notice instead of the article.",
 
   /* Review */
@@ -400,7 +411,11 @@ export const editorialEn = {
   "review.saveFirst": "Save your changes before submitting.",
   "review.markReady": "Mark ready for approval",
   "review.markReadyConsequence":
-    "Revision {revision} goes to an approver. Any further edit will need to be reviewed again.",
+    "Revision {revision} goes to one domain expert you choose. Any further edit will need to be reviewed again.",
+  "review.approverLabel": "Domain expert (approver)",
+  "review.approverHint":
+    "Must be an active approver who did not write this cycle and is not you.",
+  "review.chooseApprover": "Choose an approver…",
   "review.markedReady": "Marked ready for approval.",
   "review.requestChanges": "Request changes",
   "review.requestChangesConsequence": "The draft goes back to the writer with your reason.",
@@ -417,6 +432,9 @@ export const editorialEn = {
   "approve.title": "Approve",
   "approve.consequence":
     "You approve revision {revision} of “{title}”. If anyone edits it afterwards, it needs approval again.",
+  "approve.notDesignated": "Another approver was selected for this revision.",
+  "approve.awaitingDesignation": "Waiting for an editor to designate an approver.",
+  "publish.notMarkingEditor": "Only the editor who marked this ready can publish it.",
   "approve.done": "Approved.",
   "publish.lead": "Revision {revision} is approved and can be published.",
   "publish.button": "Review and publish",

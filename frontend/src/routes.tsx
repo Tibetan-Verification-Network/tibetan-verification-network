@@ -10,6 +10,7 @@ import { RequireAuth } from "./auth/RequireAuth";
 import { NoAccess, RequireRole } from "./editorial/components/NoAccess";
 import { AdminUsersPage } from "./editorial/pages/AdminUsersPage";
 import { ApprovalQueuePage } from "./editorial/pages/ApprovalQueuePage";
+import { PublishQueuePage } from "./editorial/pages/PublishQueuePage";
 import { ArchiveDocumentPage } from "./editorial/pages/ArchiveDocumentPage";
 import { ArchivePage } from "./editorial/pages/ArchivePage";
 import { FactCheckPage } from "./editorial/pages/FactCheckPage";
@@ -126,6 +127,14 @@ export function AppRoutes() {
             element={
               <RequireRole roles={["approver"]}>
                 <ApprovalQueuePage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="ready-to-publish"
+            element={
+              <RequireRole roles={["editor"]}>
+                <PublishQueuePage />
               </RequireRole>
             }
           />

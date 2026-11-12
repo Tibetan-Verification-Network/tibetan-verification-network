@@ -430,14 +430,19 @@ async def _publish_article(
             },
         )
         await seeder.call(AUTHOR_EMAIL, "POST", f"{path}/submit-for-review")
-        await seeder.call(EDITOR_EMAIL, "POST", f"{path}/mark-ready")
+        await seeder.call(
+            EDITOR_EMAIL,
+            "POST",
+            f"{path}/mark-ready",
+            json={"approver_id": str(approver.id)},
+        )
         await seeder.call(
             APPROVER_EMAIL,
             "POST",
             f"{path}/approve",
             json={"expected_revision": sources["current_revision_number"]},
         )
-        await seeder.call(APPROVER_EMAIL, "POST", f"{path}/publish", json={})
+        await seeder.call(EDITOR_EMAIL, "POST", f"{path}/publish", json={})
 
     if pending_translation is not None:
         await seeder.call(

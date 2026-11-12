@@ -237,6 +237,10 @@ class Review(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     invalidated_reason: Mapped[str | None] = mapped_column(Text)
+    selected_approver_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="RESTRICT"),
+    )
 
     content: Mapped[FactCheckContent] = relationship(back_populates="reviews")
     revision: Mapped[FactCheckContentRevision | None] = relationship()

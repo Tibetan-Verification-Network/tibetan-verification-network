@@ -29,6 +29,7 @@ from app.schemas.factchecks import (
     FactCheckDetailResponse,
     FactCheckListResponse,
     FactCheckPatchRequest,
+    MarkReadyRequest,
     MarkdownPreviewRequest,
     MarkdownPreviewResponse,
     PublishPreviewResponse,
@@ -343,6 +344,7 @@ async def language_request_changes(
 )
 async def language_mark_ready(
     language: LanguageCode,
+    body: MarkReadyRequest,
     fact_check: Annotated[
         FactCheck,
         Depends(load_fact_check(Action.REVIEW_MARK_READY)),
@@ -356,6 +358,7 @@ async def language_mark_ready(
         fact_check=fact_check,
         language=language.value,
         actor=auth.user,
+        body=body,
     )
 
 
@@ -458,9 +461,15 @@ async def language_publish_preview(
         FactCheck,
         Depends(load_fact_check(Action.PUBLISH)),
     ],
+    auth: Annotated[AuthenticatedUser, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> PublishPreviewResponse:
-    return await preview_publication(db, fact_check=fact_check, language=language.value)
+    return await preview_publication(
+        db,
+        fact_check=fact_check,
+        language=language.value,
+        actor=auth.user,
+    )
 
 
 @editorial_factcheck_router.post(

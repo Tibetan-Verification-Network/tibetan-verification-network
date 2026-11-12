@@ -122,17 +122,21 @@ async function submitForReview(page: Page) {
 
 async function markReady(page: Page) {
   await page.getByRole("button", { name: "Mark ready for approval" }).click();
-  await dialog(page).getByRole("button", { name: "Mark ready for approval" }).click();
+  const ready = dialog(page);
+  await ready.getByLabel("Domain expert (approver)").selectOption({ label: STAFF.approver.name });
+  await ready.getByRole("button", { name: "Mark ready for approval" }).click();
   await expect(notification(page, "Marked ready for approval.")).toBeVisible();
 }
 
-async function approveAndPublish(page: Page, correctionNote?: string) {
+async function approveRevision(page: Page) {
   await page.getByRole("button", { name: /^Approve revision \d+$/ }).click();
   const approving = dialog(page);
   await expect(approving).toContainText(/You approve revision \d+ of/);
   await approving.getByRole("button", { name: /^Approve revision \d+$/ }).click();
   await expect(notification(page, "Approved.")).toBeVisible();
+}
 
+async function publishApproved(page: Page, correctionNote?: string) {
   await page.getByRole("button", { name: "Review and publish" }).click();
   const publishing = dialog(page);
   await expect(publishing.getByRole("heading", { name: "What will be published" })).toBeVisible();
@@ -321,7 +325,10 @@ test.describe("editorial workflow", () => {
       await expectNoAxeViolations(approver);
       await openLanguage(approver, language);
       await expectNoAxeViolations(approver);
-      await approveAndPublish(approver);
+      await approveRevision(approver);
+
+      await openLanguage(editor, language);
+      await publishApproved(editor);
     });
   }
 
@@ -354,11 +361,11 @@ test.describe("editorial workflow", () => {
     const approver = await signIn(browser, "approver");
     const note = "Added the survey date.";
 
-    await openLanguage(approver, "en");
-    await approver.getByRole("button", { name: "Start a correction" }).click();
-    await dialog(approver).getByLabel("Why is this needed?").fill("The survey date was missing.");
-    await dialog(approver).getByRole("button", { name: "Start a correction" }).click();
-    await expect(notification(approver, "Correction started.")).toBeVisible();
+    await openLanguage(editor, "en");
+    await editor.getByRole("button", { name: "Start a correction" }).click();
+    await dialog(editor).getByLabel("Why is this needed?").fill("The survey date was missing.");
+    await dialog(editor).getByRole("button", { name: "Start a correction" }).click();
+    await expect(notification(editor, "Correction started.")).toBeVisible();
 
     await openLanguage(author, "en");
     await author.locator("#draft-limitations").fill(`${ARTICLE.en.limitations} Survey: March.`);
@@ -371,33 +378,36 @@ test.describe("editorial workflow", () => {
     await markReady(editor);
 
     await openLanguage(approver, "en");
-    await approveAndPublish(approver, note);
+    await approveRevision(approver);
 
-    await approver.goto(`/en/fact-checks/${SLUG}`);
-    await expect(approver.getByText(note).first()).toBeVisible();
-    await expectNoAxeViolations(approver);
+    await openLanguage(editor, "en");
+    await publishApproved(editor, note);
+
+    await editor.goto(`/en/fact-checks/${SLUG}`);
+    await expect(editor.getByText(note).first()).toBeVisible();
+    await expectNoAxeViolations(editor);
   });
 
-  test("only the approver can withdraw, and readers then see a notice", async ({
+  test("only an editor can withdraw, and readers then see a notice", async ({
     browser,
     page,
   }) => {
     const editor = await signIn(browser, "editor");
     const approver = await signIn(browser, "approver");
 
-    await openLanguage(editor, "en");
-    await expect(editor.getByRole("button", { name: "Withdraw" })).toHaveCount(0);
+    await openLanguage(approver, "en");
+    await expect(approver.getByRole("button", { name: "Withdraw" })).toHaveCount(0);
 
     for (const language of LANGUAGES) {
-      await openLanguage(approver, language);
-      await approver.getByRole("button", { name: "Withdraw" }).click();
-      const withdrawing = dialog(approver);
+      await openLanguage(editor, language);
+      await editor.getByRole("button", { name: "Withdraw" }).click();
+      const withdrawing = dialog(editor);
       await withdrawing.getByLabel("Public notice").fill("Withdrawn while the survey is redone.");
       await withdrawing.getByLabel("Internal reason").fill("Seeded e2e withdrawal.");
       await expect(withdrawing.getByRole("button", { name: "Withdraw" })).toBeDisabled();
       await withdrawing.getByLabel(`Type ${SLUG} to confirm`).fill(SLUG);
       await withdrawing.getByRole("button", { name: "Withdraw" }).click();
-      await expect(notification(approver, "Withdrawn.")).toBeVisible();
+      await expect(notification(editor, "Withdrawn.")).toBeVisible();
     }
 
     // A fresh browser: the approver's own browser may hold the live article in its HTTP cache.

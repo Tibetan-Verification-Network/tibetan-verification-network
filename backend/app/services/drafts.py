@@ -53,6 +53,7 @@ from app.schemas.factchecks import (
 )
 from app.services.audit import AuditEventType, record_audit_event
 from app.services.intake import decode_keyset_cursor, encode_keyset_cursor
+from app.services.factcheck_handoff import handoff_ids_for_content
 from app.workflow.engine import TransitionSubject, apply_transition
 from app.workflow.readiness import check_readiness
 
@@ -269,6 +270,10 @@ async def _language_summaries(
                 content=content,
                 investigation=investigation,
             )
+        marking_editor_id, designated_approver_id = await handoff_ids_for_content(
+            session,
+            content=content,
+        )
         summaries.append(
             LanguageContentSummaryResponse(
                 content_id=content.id,
@@ -279,6 +284,8 @@ async def _language_summaries(
                 live_version_number=_live_version_number(content),
                 published_at=content.published_at,
                 readiness_issues=issues,
+                marking_editor_id=marking_editor_id,
+                designated_approver_id=designated_approver_id,
             )
         )
     return summaries

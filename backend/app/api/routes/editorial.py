@@ -14,10 +14,10 @@ from app.core.permissions import RequireStaff
 from app.core.policy import Action
 from app.schemas.audit import AuditEventListResponse
 from app.schemas.auth import EditorialStatusResponse, StaffDirectoryResponse, StaffMemberResponse
-from app.schemas.factchecks import ApprovalQueueResponse
+from app.schemas.factchecks import ApprovalQueueResponse, PublishQueueResponse
 from app.services.audit_query import list_audit_events
 from app.services.auth import AuthenticatedUser
-from app.services.reviews import list_approval_queue
+from app.services.reviews import list_approval_queue, list_publish_queue
 from app.services.users import list_assignable_staff
 
 router = APIRouter(prefix="/editorial", tags=["editorial"])
@@ -27,6 +27,11 @@ router.include_router(editorial_topics_router)
 RequireApprovalQueue = Annotated[
     AuthenticatedUser,
     Depends(require_policy_action(Action.APPROVE)),
+]
+
+RequirePublishQueue = Annotated[
+    AuthenticatedUser,
+    Depends(require_policy_action(Action.PUBLISH)),
 ]
 
 RequireAuditView = Annotated[
@@ -78,6 +83,16 @@ async def editorial_approval_queue(
     cursor: str | None = None,
 ) -> ApprovalQueueResponse:
     return await list_approval_queue(db, user=auth.user, limit=limit, cursor=cursor)
+
+
+@router.get("/publish-queue", response_model=PublishQueueResponse)
+async def editorial_publish_queue(
+    auth: RequirePublishQueue,
+    db: Annotated[AsyncSession, Depends(get_db_session)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    cursor: str | None = None,
+) -> PublishQueueResponse:
+    return await list_publish_queue(db, user=auth.user, limit=limit, cursor=cursor)
 
 
 @router.get("/audit", response_model=AuditEventListResponse)

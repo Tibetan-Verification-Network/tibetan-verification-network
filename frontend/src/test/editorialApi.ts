@@ -99,6 +99,8 @@ export interface EditorialState {
   signedOut: boolean;
   /** Set to make the next draft PATCH answer 409 as if someone else saved first. */
   remoteDraftEdit: Partial<Draft> | null;
+  markingEditorId: string | null;
+  designatedApproverId: string | null;
 }
 
 function submission(overrides: Partial<Submission> = {}): Submission {
@@ -280,6 +282,11 @@ export function installEditorialApi(options: EditorialOptions = {}) {
     contactReveals: 0,
     signedOut: false,
     remoteDraftEdit: null,
+    markingEditorId: ID.editor,
+    designatedApproverId:
+      initialStatus === "ready_for_approval" || initialStatus === "approved"
+        ? ID.approver
+        : null,
   };
   const rollup = (status: LanguageStatus): WorkflowStatus =>
     status === "draft" || status === "withdrawn"
@@ -329,11 +336,14 @@ export function installEditorialApi(options: EditorialOptions = {}) {
         language === "en" && state.versions.length > 0 ? state.versions.length : null,
       published_at: language === "en" && state.versions.length > 0 ? NOW : null,
       readiness_issues: [],
+      marking_editor_id: language === "en" ? state.markingEditorId : null,
+      designated_approver_id: language === "en" ? state.designatedApproverId : null,
     })),
   });
 
   const queueItems = () =>
-    state.languageStatus.en === "ready_for_approval" || state.languageStatus.en === "approved"
+    state.languageStatus.en === "ready_for_approval" &&
+    state.designatedApproverId === user.id
       ? [
           {
             fact_check_id: ID.factCheck,
@@ -648,6 +658,16 @@ export function installEditorialApi(options: EditorialOptions = {}) {
     if (path === "/api/v1/editorial/approval-queue") {
       return { status: 200, body: { items: queueItems(), next_cursor: null } };
     }
+    if (path === "/api/v1/editorial/publish-queue") {
+      const items =
+        state.languageStatus.en === "approved" && state.markingEditorId === user.id
+          ? queueItems().map((item) => ({
+              ...item,
+              designated_approver_id: state.designatedApproverId,
+            }))
+          : [];
+      return { status: 200, body: { items, next_cursor: null } };
+    }
     if (path === "/api/v1/editorial/topics" && method === "GET") {
       return { status: 200, body: { items: state.topics } };
     }
@@ -734,6 +754,11 @@ export function installEditorialApi(options: EditorialOptions = {}) {
           return { status: 200, body: { editorial_status: "in_review", readiness_warnings: [] } };
         }
         if (action === "/mark-ready") {
+          if (!payload.approver_id) {
+            return { status: 422, body: { detail: { code: "invalid_approver" } } };
+          }
+          state.designatedApproverId = payload.approver_id as string;
+          state.markingEditorId = user.id;
           setStatus("ready_for_approval");
           return { status: 200, body: state.draft };
         }

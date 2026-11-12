@@ -51,6 +51,36 @@ def assert_is_approving_reviewer(
         )
 
 
+def assert_is_designated_approver(
+    actor: User,
+    *,
+    designated_approver_id: uuid.UUID | None,
+    message: str = "Only the selected domain expert may approve this revision",
+) -> None:
+    from app.workflow.exceptions import GuardCode, TransitionBlockedError
+
+    if designated_approver_id is None or actor.id != designated_approver_id:
+        raise TransitionBlockedError(
+            code=GuardCode.NOT_DESIGNATED_APPROVER.value,
+            message=message,
+        )
+
+
+def assert_is_ready_marking_editor(
+    actor: User,
+    *,
+    ready_marking_editor_id: uuid.UUID | None,
+    message: str = "Only the editor who marked this revision ready may publish it",
+) -> None:
+    from app.workflow.exceptions import GuardCode, TransitionBlockedError
+
+    if ready_marking_editor_id is None or actor.id != ready_marking_editor_id:
+        raise TransitionBlockedError(
+            code=GuardCode.NOT_READY_MARKING_EDITOR.value,
+            message=message,
+        )
+
+
 def assert_not_ready_marking_editor(
     actor: User,
     *,

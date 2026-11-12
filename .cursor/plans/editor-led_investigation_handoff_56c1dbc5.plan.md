@@ -10,10 +10,10 @@ todos:
     status: completed
   - id: approval-designation
     content: Require one approver per ready revision and restrict approval to that selected domain expert.
-    status: pending
+    status: completed
   - id: editor-publication
     content: Return approved work to the marking editor for publication and move correction/withdrawal to editors.
-    status: pending
+    status: completed
   - id: regression-tests
     content: Cover both handoffs, role denials, queues, ownership, publication authority, and UI visibility.
     status: pending

@@ -199,9 +199,10 @@ describe("review", () => {
 
     await user.click(screen.getByRole("button", { name: "Mark ready for approval" }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText(/Revision 3 goes to an approver/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/goes to one domain expert/)).toBeInTheDocument();
+    await user.selectOptions(within(dialog).getByLabelText("Domain expert (approver)"), ID.approver);
     await user.click(within(dialog).getByRole("button", { name: "Mark ready for approval" }));
-    expect(api.callsTo("POST", /mark-ready$/)).toHaveLength(1);
+    expect(api.callsTo("POST", /mark-ready$/)[0]?.body).toEqual({ approver_id: ID.approver });
     expect(await screen.findByText("Marked ready for approval.")).toBeInTheDocument();
   });
 
@@ -231,6 +232,10 @@ describe("review", () => {
     const user = userEvent.setup();
     renderApp(EN);
     await user.click(await screen.findByRole("button", { name: "Mark ready for approval" }));
+    await user.selectOptions(
+      within(await screen.findByRole("dialog")).getByLabelText("Domain expert (approver)"),
+      ID.approver,
+    );
     await user.click(
       within(await screen.findByRole("dialog")).getByRole("button", {
         name: "Mark ready for approval",

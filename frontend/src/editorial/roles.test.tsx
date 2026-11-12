@@ -23,7 +23,16 @@ describe("role-aware navigation", () => {
     [
       "editor",
       STAFF.editor,
-      ["Overview", "Inbox", "Investigations", "Fact-checks", "Archive", "Topics", "Public site"],
+      [
+        "Overview",
+        "Inbox",
+        "Investigations",
+        "Fact-checks",
+        "Ready to publish",
+        "Archive",
+        "Topics",
+        "Public site",
+      ],
     ],
     [
       "approver",

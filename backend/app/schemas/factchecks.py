@@ -142,6 +142,8 @@ class LanguageContentSummaryResponse(BaseModel):
     live_version_number: int | None
     published_at: datetime | None
     readiness_issues: list[str] = Field(default_factory=list)
+    marking_editor_id: uuid.UUID | None = None
+    designated_approver_id: uuid.UUID | None = None
 
 
 class FactCheckDetailResponse(BaseModel):
@@ -248,6 +250,12 @@ class ReviewCommentRequest(BaseModel):
     field_anchor: str | None = Field(default=None, max_length=200)
 
 
+class MarkReadyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    approver_id: uuid.UUID
+
+
 class ApproveRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -282,6 +290,25 @@ class ApprovalQueueResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     items: list[ApprovalQueueItemResponse]
+    next_cursor: str | None
+
+
+class PublishQueueItemResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    fact_check_id: uuid.UUID
+    language: LanguageCode
+    title: str | None = None
+    public_slug: str | None = None
+    current_revision_number: int
+    updated_at: datetime
+    designated_approver_id: uuid.UUID | None = None
+
+
+class PublishQueueResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[PublishQueueItemResponse]
     next_cursor: str | None
 
 

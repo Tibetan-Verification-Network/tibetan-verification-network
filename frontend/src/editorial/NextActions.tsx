@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import {
   useApprovalQueue,
+  usePublishQueue,
   useFactChecks,
   useInvestigations,
   useSubmissions,
@@ -71,13 +72,15 @@ export function NextActions() {
   const triage = can.triage(user);
   const work = can.workEditorially(user);
   const editor = can.review(user);
-  const approver = can.decide(user);
+  const approver = can.approve(user);
+  const publisher = can.publish(user);
 
   const inbox = useSubmissions({ workflow_status: "inbox" }, 5, viewInbox);
   const mine = useInvestigations({ mine: true }, 5, work);
   const drafts = useFactChecks({ mine: true }, 5, work);
   const review = useFactChecks({ workflow_status: "in_review" }, 5, editor);
   const queue = useApprovalQueue(approver);
+  const publishQueue = usePublishQueue(publisher);
 
   if (!work) {
     return null;
@@ -156,6 +159,20 @@ export function NextActions() {
             more={queue.hasNextPage}
             allTo="/editorial/approvals"
             rows={queue.items.slice(0, 5).map((item) => ({
+              key: `${item.fact_check_id}:${item.language}`,
+              to: `/editorial/factchecks/${item.fact_check_id}/${item.language}`,
+              label: item.title ?? item.public_slug ?? t("factcheck.untitled"),
+            }))}
+          />
+        ) : null}
+        {publisher ? (
+          <ActionCard
+            title="dashboard.readyToPublish"
+            emptyKey="dashboard.readyToPublish.empty"
+            state={publishQueue}
+            more={publishQueue.hasNextPage}
+            allTo="/editorial/ready-to-publish"
+            rows={publishQueue.items.slice(0, 5).map((item) => ({
               key: `${item.fact_check_id}:${item.language}`,
               to: `/editorial/factchecks/${item.fact_check_id}/${item.language}`,
               label: item.title ?? item.public_slug ?? t("factcheck.untitled"),

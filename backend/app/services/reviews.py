@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.policy import scope_factchecks
+from app.core.policy import is_approver, scope_factchecks
 from app.db.enums import LanguageCode as DbLanguageCode
 from app.db.enums import LanguageEditorialStatus, ReviewDecision
 from app.models.identity import User
@@ -28,6 +28,9 @@ from app.schemas.factchecks import (
     ApprovalQueueResponse,
     ApproveRequest,
     DraftResponse,
+    MarkReadyRequest,
+    PublishQueueItemResponse,
+    PublishQueueResponse,
     ReadinessResponse,
     ReasonRequest,
     ReviewCommentRequest,
@@ -37,10 +40,12 @@ from app.schemas.factchecks import (
 )
 from app.services.audit import AuditEventType, record_audit_event
 from app.services.drafts import _draft_response, _language_code, _load_content_for_language
-from app.services.intake import decode_keyset_cursor, encode_keyset_cursor
+from app.services.factcheck_handoff import active_mark_ready_review as _active_mark_ready_review
+from app.services.intake import _editorial_staff_user, decode_keyset_cursor, encode_keyset_cursor
 from app.workflow.engine import TransitionSubject, apply_transition
 from app.workflow.exceptions import InvalidTransitionError, TransitionBlockedError
 from app.workflow.guards import (
+    assert_is_designated_approver,
     assert_not_author,
     assert_not_ready_marking_editor,
     authors_of,
@@ -92,16 +97,19 @@ async def _active_mark_ready_reviewer_id(
     content_id: uuid.UUID,
     revision_id: uuid.UUID | None,
 ) -> uuid.UUID | None:
-    if revision_id is None:
-        return None
-    return await session.scalar(
-        select(Review.reviewer_id).where(
-            Review.fact_check_content_id == content_id,
-            Review.revision_id == revision_id,
-            Review.decision == ReviewDecision.MARK_READY,
-            Review.invalidated_at.is_(None),
-        )
+    review = await _active_mark_ready_review(
+        session,
+        content_id=content_id,
+        revision_id=revision_id,
     )
+    return review.reviewer_id if review else None
+
+
+async def _active_approver_user(session: AsyncSession, user_id: uuid.UUID) -> User | None:
+    user = await _editorial_staff_user(session, user_id)
+    if user is None or not is_approver(user):
+        return None
+    return user
 
 
 async def _load_locked_content(
@@ -397,6 +405,7 @@ async def mark_ready(
     fact_check: FactCheck,
     language: str,
     actor: User,
+    body: MarkReadyRequest,
 ) -> DraftResponse:
     content = await _load_locked_content(session, fact_check_id=fact_check.id, language=language)
     investigation = content.fact_check.investigation
@@ -437,6 +446,32 @@ async def mark_ready(
             detail={"code": "no_revision", "message": "Save a draft revision before marking ready"},
         )
 
+    approver = await _active_approver_user(session, body.approver_id)
+    if approver is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "invalid_approver",
+                "message": "approver_id must be an active user with the approver role",
+            },
+        )
+    if approver.id == actor.id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "invalid_approver",
+                "message": "The marking editor may not select themselves as approver",
+            },
+        )
+    if approver.id in author_ids:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "invalid_approver",
+                "message": "The selected approver may not be an author of this revision cycle",
+            },
+        )
+
     try:
         await apply_transition(
             session,
@@ -455,6 +490,7 @@ async def mark_ready(
         reviewer_id=actor.id,
         decision=ReviewDecision.MARK_READY,
         revision_id=revision.id,
+        selected_approver_id=approver.id,
     )
     session.add(review)
     await record_audit_event(
@@ -466,6 +502,7 @@ async def mark_ready(
         payload={
             "language": content.language.value,
             "revision_number": content.current_revision_number,
+            "selected_approver_id": str(approver.id),
         },
     )
     await session.flush()
@@ -514,13 +551,28 @@ async def approve_language(
             detail={"code": "no_revision", "message": "No revision exists to approve"},
         )
 
-    ready_editor_id = await _active_mark_ready_reviewer_id(
+    mark_ready_review = await _active_mark_ready_review(
         session,
         content_id=content.id,
         revision_id=revision.id,
     )
+    if mark_ready_review is None or mark_ready_review.selected_approver_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "no_designated_approver",
+                "message": "No domain expert is designated for this revision",
+            },
+        )
     try:
-        assert_not_ready_marking_editor(actor, ready_marking_editor_id=ready_editor_id)
+        assert_not_ready_marking_editor(
+            actor,
+            ready_marking_editor_id=mark_ready_review.reviewer_id,
+        )
+        assert_is_designated_approver(
+            actor,
+            designated_approver_id=mark_ready_review.selected_approver_id,
+        )
     except TransitionBlockedError as exc:
         raise http_conflict_from_guard(exc) from exc
 
@@ -664,12 +716,12 @@ async def list_approval_queue(
             content_id=content.id,
             revision_number=content.current_revision_number,
         )
-        ready_editor_id = await _active_mark_ready_reviewer_id(
+        mark_ready = await _active_mark_ready_review(
             session,
             content_id=content.id,
             revision_id=revision.id if revision else None,
         )
-        if ready_editor_id == user.id:
+        if mark_ready is None or mark_ready.selected_approver_id != user.id:
             continue
         eligible.append(content)
         if len(eligible) >= limit + 1:
@@ -692,3 +744,68 @@ async def list_approval_queue(
         last_row = page[-1]
         next_cursor = encode_keyset_cursor(last_row.updated_at, last_row.id)
     return ApprovalQueueResponse(items=items, next_cursor=next_cursor)
+
+
+async def list_publish_queue(
+    session: AsyncSession,
+    *,
+    user: User,
+    limit: int,
+    cursor: str | None,
+) -> PublishQueueResponse:
+    visible_fact_check_ids = scope_factchecks(select(FactCheck.id), user).scalar_subquery()
+    stmt = (
+        select(FactCheckContent)
+        .where(
+            FactCheckContent.fact_check_id.in_(visible_fact_check_ids),
+            FactCheckContent.editorial_status == LanguageEditorialStatus.APPROVED,
+        )
+        .options(
+            selectinload(FactCheckContent.fact_check).selectinload(FactCheck.investigation),
+        )
+        .order_by(FactCheckContent.updated_at.desc(), FactCheckContent.id.desc())
+    )
+    if cursor is not None:
+        cursor_updated_at, cursor_id = decode_keyset_cursor(cursor)
+        stmt = stmt.where(
+            tuple_(FactCheckContent.updated_at, FactCheckContent.id)
+            < tuple_(cursor_updated_at, cursor_id)
+        )
+
+    rows = (await session.execute(stmt.limit(limit * 3))).scalars().all()
+    eligible: list[tuple[FactCheckContent, uuid.UUID | None]] = []
+    for content in rows:
+        revision = await _revision_for_number(
+            session,
+            content_id=content.id,
+            revision_number=content.current_revision_number,
+        )
+        mark_ready = await _active_mark_ready_review(
+            session,
+            content_id=content.id,
+            revision_id=revision.id if revision else None,
+        )
+        if mark_ready is None or mark_ready.reviewer_id != user.id:
+            continue
+        eligible.append((content, mark_ready.selected_approver_id))
+        if len(eligible) >= limit + 1:
+            break
+
+    page = eligible[:limit]
+    items = [
+        PublishQueueItemResponse(
+            fact_check_id=row.fact_check_id,
+            language=LanguageCode(row.language.value),
+            title=row.title,
+            public_slug=row.fact_check.public_slug,
+            current_revision_number=row.current_revision_number,
+            updated_at=row.updated_at,
+            designated_approver_id=designated,
+        )
+        for row, designated in page
+    ]
+    next_cursor = None
+    if len(eligible) > limit and page:
+        last_row = page[-1][0]
+        next_cursor = encode_keyset_cursor(last_row.updated_at, last_row.id)
+    return PublishQueueResponse(items=items, next_cursor=next_cursor)

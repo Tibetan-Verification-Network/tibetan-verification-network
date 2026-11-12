@@ -20,6 +20,8 @@ const CONFLICT_CODES: Readonly<Record<string, MessageKey>> = {
   is_author: "editorial.conflict.is_author",
   is_ready_marking_editor: "editorial.conflict.is_ready_marking_editor",
   not_approving_reviewer: "editorial.conflict.not_approving_reviewer",
+  not_designated_approver: "editorial.conflict.not_designated_approver",
+  not_ready_marking_editor: "editorial.conflict.not_ready_marking_editor",
   investigation_frozen: "editorial.conflict.investigation_frozen",
 };
 

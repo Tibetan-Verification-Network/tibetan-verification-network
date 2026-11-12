@@ -53,7 +53,8 @@ from app.services.reviews import (
 )
 from app.workflow.engine import TransitionSubject, apply_transition
 from app.workflow.exceptions import InvalidTransitionError, TransitionBlockedError
-from app.workflow.guards import assert_is_approving_reviewer
+from app.services.factcheck_handoff import active_mark_ready_review as _active_mark_ready_review
+from app.workflow.guards import assert_is_ready_marking_editor
 from app.workflow.http import http_conflict_from_guard, http_conflict_from_transition
 from app.workflow.readiness import check_readiness
 
@@ -192,15 +193,6 @@ async def publish_language(
     if investigation is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
-    if content.editorial_status != LanguageEditorialStatus.APPROVED:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "code": "not_approved",
-                "message": "Language version must be approved before publication",
-            },
-        )
-
     revision = await _revision_for_number(
         session,
         content_id=content.id,
@@ -210,6 +202,28 @@ async def publish_language(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={"code": "no_revision", "message": "No revision exists to publish"},
+        )
+
+    mark_ready = await _active_mark_ready_review(
+        session,
+        content_id=content.id,
+        revision_id=revision.id,
+    )
+    try:
+        assert_is_ready_marking_editor(
+            actor,
+            ready_marking_editor_id=mark_ready.reviewer_id if mark_ready else None,
+        )
+    except TransitionBlockedError as exc:
+        raise http_conflict_from_guard(exc) from exc
+
+    if content.editorial_status != LanguageEditorialStatus.APPROVED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "not_approved",
+                "message": "Language version must be approved before publication",
+            },
         )
 
     approval = await _active_approval_review(
@@ -222,11 +236,6 @@ async def publish_language(
             status_code=status.HTTP_409_CONFLICT,
             detail={"code": "no_approval", "message": "No active approval for this revision"},
         )
-
-    try:
-        assert_is_approving_reviewer(actor, approving_reviewer_id=approval.reviewer_id)
-    except TransitionBlockedError as exc:
-        raise http_conflict_from_guard(exc) from exc
 
     if approval.revision_id != revision.id:
         raise HTTPException(
@@ -366,6 +375,7 @@ async def preview_publication(
     *,
     fact_check: FactCheck,
     language: str,
+    actor: User,
 ) -> PublishPreviewResponse:
     """Build the snapshot that publishing would freeze, without writing or locking anything."""
     result = await session.execute(
@@ -386,6 +396,25 @@ async def preview_publication(
     investigation = content.fact_check.investigation
     if investigation is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+    if content.editorial_status == LanguageEditorialStatus.APPROVED:
+        revision = await _revision_for_number(
+            session,
+            content_id=content.id,
+            revision_number=content.current_revision_number,
+        )
+        mark_ready = await _active_mark_ready_review(
+            session,
+            content_id=content.id,
+            revision_id=revision.id if revision else None,
+        )
+        try:
+            assert_is_ready_marking_editor(
+                actor,
+                ready_marking_editor_id=mark_ready.reviewer_id if mark_ready else None,
+            )
+        except TransitionBlockedError as exc:
+            raise http_conflict_from_guard(exc) from exc
 
     version_count = await session.scalar(
         select(func.count())

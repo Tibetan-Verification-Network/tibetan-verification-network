@@ -24,8 +24,11 @@ function navFor(user: CurrentUser | null): NavItem[] {
       { to: "/editorial/factchecks", label: "nav.factChecks" },
     );
   }
-  if (can.decide(user)) {
+  if (can.approve(user)) {
     items.push({ to: "/editorial/approvals", label: "nav.approvals" });
+  }
+  if (can.publish(user)) {
+    items.push({ to: "/editorial/ready-to-publish", label: "nav.readyToPublish" });
   }
   if (can.workEditorially(user)) {
     items.push({ to: "/editorial/archive", label: "nav.archive" });

@@ -34,6 +34,10 @@ from tests.factories import make_investigation, make_user
 STRONG_PASSWORD = "correct-horse-battery-staple"
 
 
+def _mark_ready_body(approver_id: uuid.UUID) -> dict[str, str]:
+    return {"approver_id": str(approver_id)}
+
+
 async def _create_factcheck(client: AsyncClient, session: dict, investigation_id: uuid.UUID) -> dict:
     response = await client.post(
         f"/api/v1/investigations/{investigation_id}/factcheck",
@@ -149,6 +153,7 @@ async def test_self_approval_and_ready_editor_cannot_approve(
         editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
         ready = await client.post(
             f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/mark-ready",
+            json=_mark_ready_body(approver.id),
             headers=csrf_headers(editor_session["csrf_token"]),
         )
         assert ready.status_code == 200, ready.text
@@ -212,6 +217,7 @@ async def test_after_approval_edit_blocked_and_reopen_invalidates(
         editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
         await client.post(
             f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/mark-ready",
+            json=_mark_ready_body(approver.id),
             headers=csrf_headers(editor_session["csrf_token"]),
         )
 
@@ -281,6 +287,7 @@ async def test_stale_revision_on_approve_rejected(
         editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
         await client.post(
             f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/mark-ready",
+            json=_mark_ready_body(approver.id),
             headers=csrf_headers(editor_session["csrf_token"]),
         )
 
@@ -324,6 +331,7 @@ async def test_approver_outside_assignment_sees_queue_not_detail(
         editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
         await client.post(
             f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/mark-ready",
+            json=_mark_ready_body(approver.id),
             headers=csrf_headers(editor_session["csrf_token"]),
         )
 
@@ -410,6 +418,7 @@ async def test_concurrent_approvals_yield_one_active_approval(
             reviewer_id=editor.id,
             decision=ReviewDecision.MARK_READY,
             revision_id=revision.id,
+            selected_approver_id=approver_a.id,
         )
     )
     await db_session.flush()
@@ -444,3 +453,169 @@ async def test_concurrent_approvals_yield_one_active_approval(
         )
     ).scalars().all()
     assert len(active) == 1
+
+
+@pytest.mark.usefixtures("db_session_for_api")
+async def test_mark_ready_requires_designated_approver(
+    api_client_factory,
+    db_session_for_api: AsyncSession,
+) -> None:
+    author = await make_user(db_session_for_api, roles=(RoleCode.RESEARCHER,))
+    editor = await make_user(db_session_for_api, roles=(RoleCode.EDITOR,))
+    approver = await make_user(db_session_for_api, roles=(RoleCode.APPROVER,))
+
+    async with api_client_factory() as client:
+        author_session = await login(client, email=author.email, password=STRONG_PASSWORD)
+        investigation = await make_investigation(db_session_for_api, owner=author)
+        created = await _create_factcheck(client, author_session, investigation.id)
+        fact_check_id = created["id"]
+        await _prepare_publishable_draft(
+            client,
+            author_session,
+            db_session_for_api,
+            investigation_id=investigation.id,
+            fact_check_id=fact_check_id,
+            author_id=author.id,
+        )
+        await client.post(
+            f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/submit-for-review",
+            headers=csrf_headers(author_session["csrf_token"]),
+        )
+
+        editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
+        missing = await client.post(
+            f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/mark-ready",
+            headers=csrf_headers(editor_session["csrf_token"]),
+        )
+        assert missing.status_code == 422
+
+        bad = await client.post(
+            f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/mark-ready",
+            json={"approver_id": str(author.id)},
+            headers=csrf_headers(editor_session["csrf_token"]),
+        )
+        assert bad.status_code == 422
+
+        ok = await client.post(
+            f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/mark-ready",
+            json=_mark_ready_body(approver.id),
+            headers=csrf_headers(editor_session["csrf_token"]),
+        )
+        assert ok.status_code == 200, ok.text
+
+
+@pytest.mark.usefixtures("db_session_for_api")
+async def test_only_designated_approver_may_approve(
+    api_client_factory,
+    db_session_for_api: AsyncSession,
+) -> None:
+    author = await make_user(db_session_for_api, roles=(RoleCode.RESEARCHER,))
+    editor = await make_user(db_session_for_api, roles=(RoleCode.EDITOR,))
+    approver = await make_user(db_session_for_api, roles=(RoleCode.APPROVER,))
+    other = await make_user(db_session_for_api, roles=(RoleCode.APPROVER,))
+
+    async with api_client_factory() as client:
+        author_session = await login(client, email=author.email, password=STRONG_PASSWORD)
+        investigation = await make_investigation(db_session_for_api, owner=author)
+        created = await _create_factcheck(client, author_session, investigation.id)
+        fact_check_id = created["id"]
+        revision = await _prepare_publishable_draft(
+            client,
+            author_session,
+            db_session_for_api,
+            investigation_id=investigation.id,
+            fact_check_id=fact_check_id,
+            author_id=author.id,
+        )
+        await client.post(
+            f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/submit-for-review",
+            headers=csrf_headers(author_session["csrf_token"]),
+        )
+
+        editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
+        await client.post(
+            f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/mark-ready",
+            json=_mark_ready_body(approver.id),
+            headers=csrf_headers(editor_session["csrf_token"]),
+        )
+
+    async with api_client_factory() as client:
+        other_session = await login(client, email=other.email, password=STRONG_PASSWORD)
+        denied = await client.post(
+            f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/approve",
+            json={"expected_revision": revision},
+            headers=csrf_headers(other_session["csrf_token"]),
+        )
+        assert denied.status_code == 409
+        assert denied.json()["detail"]["code"] == "not_designated_approver"
+
+        queue = await client.get("/api/v1/editorial/approval-queue")
+        assert queue.status_code == 200
+        assert not any(item["fact_check_id"] == fact_check_id for item in queue.json()["items"])
+
+    async with api_client_factory() as client:
+        approver_session = await login(client, email=approver.email, password=STRONG_PASSWORD)
+        ok = await client.post(
+            f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/approve",
+            json={"expected_revision": revision},
+            headers=csrf_headers(approver_session["csrf_token"]),
+        )
+        assert ok.status_code == 200
+
+
+@pytest.mark.usefixtures("db_session_for_api")
+async def test_marking_editor_publishes_not_approver(
+    api_client_factory,
+    db_session_for_api: AsyncSession,
+) -> None:
+    author = await make_user(db_session_for_api, roles=(RoleCode.RESEARCHER,))
+    editor = await make_user(db_session_for_api, roles=(RoleCode.EDITOR,))
+    approver = await make_user(db_session_for_api, roles=(RoleCode.APPROVER,))
+
+    async with api_client_factory() as client:
+        author_session = await login(client, email=author.email, password=STRONG_PASSWORD)
+        investigation = await make_investigation(db_session_for_api, owner=author)
+        created = await _create_factcheck(client, author_session, investigation.id)
+        fact_check_id = created["id"]
+        revision = await _prepare_publishable_draft(
+            client,
+            author_session,
+            db_session_for_api,
+            investigation_id=investigation.id,
+            fact_check_id=fact_check_id,
+            author_id=author.id,
+        )
+        await client.post(
+            f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/submit-for-review",
+            headers=csrf_headers(author_session["csrf_token"]),
+        )
+
+        editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
+        await client.post(
+            f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/mark-ready",
+            json=_mark_ready_body(approver.id),
+            headers=csrf_headers(editor_session["csrf_token"]),
+        )
+
+        approver_session = await login(client, email=approver.email, password=STRONG_PASSWORD)
+        await client.post(
+            f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/approve",
+            json={"expected_revision": revision},
+            headers=csrf_headers(approver_session["csrf_token"]),
+        )
+
+        denied = await client.post(
+            f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/publish",
+            json={},
+            headers=csrf_headers(approver_session["csrf_token"]),
+        )
+        assert denied.status_code == 404
+
+    async with api_client_factory() as client:
+        editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
+        published = await client.post(
+            f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/publish",
+            json={},
+            headers=csrf_headers(editor_session["csrf_token"]),
+        )
+        assert published.status_code == 200, published.text

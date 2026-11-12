@@ -126,7 +126,7 @@ async def _prepare_publishable_draft(
 
 
 @pytest.mark.usefixtures("db_session_for_api")
-async def test_publish_requires_approving_reviewer_and_snapshot_is_allowlisted(
+async def test_publish_requires_marking_editor_and_snapshot_is_allowlisted(
     api_client_factory,
     db_session_for_api: AsyncSession,
 ) -> None:
@@ -155,6 +155,7 @@ async def test_publish_requires_approving_reviewer_and_snapshot_is_allowlisted(
         editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
         await client.post(
             f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/mark-ready",
+            json={"approver_id": str(approver.id)},
             headers=csrf_headers(editor_session["csrf_token"]),
         )
         approver_session = await login(client, email=approver.email, password=STRONG_PASSWORD)
@@ -175,18 +176,18 @@ async def test_publish_requires_approving_reviewer_and_snapshot_is_allowlisted(
                 json={},
                 headers=csrf_headers(other_session["csrf_token"]),
             )
-            assert denied.status_code == 409
-            assert denied.json()["detail"]["code"] == "not_approving_reviewer"
+            assert denied.status_code == 404
 
+    async with api_client_factory() as client:
+        editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
         published = await client.post(
             f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/publish",
             json={},
-            headers=csrf_headers(approver_session["csrf_token"]),
+            headers=csrf_headers(editor_session["csrf_token"]),
         )
         assert published.status_code == 200, published.text
         assert published.json()["version_number"] == 1
 
-        editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
         detail = await client.get(
             f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/versions/1",
             headers=csrf_headers(editor_session["csrf_token"]),
@@ -235,6 +236,7 @@ async def test_checksum_mismatch_blocks_publish(
         editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
         await client.post(
             f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/mark-ready",
+            json={"approver_id": str(approver.id)},
             headers=csrf_headers(editor_session["csrf_token"]),
         )
         approver_session = await login(client, email=approver.email, password=STRONG_PASSWORD)
@@ -254,10 +256,11 @@ async def test_checksum_mismatch_blocks_publish(
         content_row.title = "Tampered after approval"
         await db_session_for_api.flush()
 
+        editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
         blocked = await client.post(
             f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/publish",
             json={},
-            headers=csrf_headers(approver_session["csrf_token"]),
+            headers=csrf_headers(editor_session["csrf_token"]),
         )
         assert blocked.status_code == 409
         assert blocked.json()["detail"]["code"] == "checksum_mismatch"
@@ -333,6 +336,7 @@ async def test_correction_preserves_prior_version(
         editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
         await client.post(
             f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/mark-ready",
+            json={"approver_id": str(approver.id)},
             headers=csrf_headers(editor_session["csrf_token"]),
         )
         approver_session = await login(client, email=approver.email, password=STRONG_PASSWORD)
@@ -341,13 +345,14 @@ async def test_correction_preserves_prior_version(
             json={"expected_revision": revision},
             headers=csrf_headers(approver_session["csrf_token"]),
         )
+    async with api_client_factory() as client:
+        editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
         await client.post(
             f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/publish",
             json={},
-            headers=csrf_headers(approver_session["csrf_token"]),
+            headers=csrf_headers(editor_session["csrf_token"]),
         )
 
-        editor_session = await login(client, email=editor.email, password=STRONG_PASSWORD)
         v1 = await client.get(
             f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/versions/1",
             headers=csrf_headers(editor_session["csrf_token"]),
@@ -358,7 +363,7 @@ async def test_correction_preserves_prior_version(
         await client.post(
             f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/corrections",
             json={"kind": "correction", "reason": "Fix wording"},
-            headers=csrf_headers(approver_session["csrf_token"]),
+            headers=csrf_headers(editor_session["csrf_token"]),
         )
 
         v1_after = await client.get(

@@ -283,6 +283,8 @@ export interface LanguageSummary {
   live_version_number: number | null;
   published_at: string | null;
   readiness_issues: string[];
+  marking_editor_id: string | null;
+  designated_approver_id: string | null;
 }
 
 export interface FactCheckDetail {

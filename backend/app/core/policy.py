@@ -7,15 +7,20 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import Select, false, or_, select
+from sqlalchemy import Select, exists, false, or_, select
 from sqlalchemy.sql import ColumnElement
 
-from app.db.enums import ArchiveVisibility, LanguageEditorialStatus, RoleCode
+from app.db.enums import ArchiveVisibility, LanguageEditorialStatus, ReviewDecision, RoleCode
 from app.models.archive import AccessGrant, ArchiveDocument
 from app.models.assignments import InvestigationAssignment
 from app.models.identity import User
 from app.models.intake import Submission
-from app.models.publication import FactCheck, FactCheckContent
+from app.models.publication import (
+    FactCheck,
+    FactCheckContent,
+    FactCheckContentRevision,
+    Review,
+)
 from app.models.research import Investigation
 
 EDITORIAL_ROLES = frozenset(
@@ -238,6 +243,9 @@ def can(
     if action == Action.APPROVE and obj is None:
         return is_approver(user)
 
+    if action == Action.PUBLISH and obj is None:
+        return is_editor(user)
+
     if action in {
         Action.FACTCHECK_VIEW,
         Action.DRAFT_EDIT,
@@ -263,13 +271,10 @@ def can(
             return (is_editor(user) or is_approver(user)) and _factcheck_view_allowed(user, obj)
         if action in {Action.REVIEW_COMMENT, Action.REVIEW_MARK_READY}:
             return is_editor(user) and _factcheck_view_allowed(user, obj)
-        if action in {
-            Action.APPROVE,
-            Action.PUBLISH,
-            Action.CORRECTION_START,
-            Action.WITHDRAW,
-        }:
+        if action == Action.APPROVE:
             return is_approver(user) and _factcheck_view_allowed(user, obj)
+        if action in {Action.PUBLISH, Action.CORRECTION_START, Action.WITHDRAW}:
+            return is_editor(user) and _factcheck_view_allowed(user, obj)
 
     if action == Action.AUDIT_VIEW:
         return is_editor(user) or is_approver(user)
@@ -288,11 +293,24 @@ def can(
     return False  # type: ignore[unreachable]
 
 
-def _factcheck_in_approval_queue(fact_check: FactCheck) -> bool:
-    return any(
-        content.editorial_status
-        in {LanguageEditorialStatus.READY_FOR_APPROVAL, LanguageEditorialStatus.APPROVED}
-        for content in fact_check.contents
+def _designated_approver_queue_exists(user_id: uuid.UUID) -> ColumnElement[bool]:
+    current_revision_id = (
+        select(FactCheckContentRevision.id)
+        .where(
+            FactCheckContentRevision.content_id == FactCheckContent.id,
+            FactCheckContentRevision.revision_number == FactCheckContent.current_revision_number,
+        )
+        .correlate(FactCheckContent)
+        .scalar_subquery()
+    )
+    return exists(
+        select(1).where(
+            Review.fact_check_content_id == FactCheckContent.id,
+            Review.decision == ReviewDecision.MARK_READY,
+            Review.invalidated_at.is_(None),
+            Review.selected_approver_id == user_id,
+            Review.revision_id == current_revision_id,
+        )
     )
 
 
@@ -302,7 +320,12 @@ def _factcheck_view_allowed(user: User, fact_check: FactCheck) -> bool:
         return False
     if _investigation_view_allowed(user, investigation):
         return True
-    return is_approver(user) and _factcheck_in_approval_queue(fact_check)
+    if not is_approver(user):
+        return False
+    return any(
+        content.editorial_status == LanguageEditorialStatus.READY_FOR_APPROVAL
+        for content in fact_check.contents
+    )
 
 
 def scope_investigations(
@@ -398,12 +421,8 @@ def scope_factchecks(
         approval_queue_ids = (
             select(FactCheckContent.fact_check_id)
             .where(
-                FactCheckContent.editorial_status.in_(
-                    (
-                        LanguageEditorialStatus.READY_FOR_APPROVAL,
-                        LanguageEditorialStatus.APPROVED,
-                    )
-                )
+                FactCheckContent.editorial_status == LanguageEditorialStatus.READY_FOR_APPROVAL,
+                _designated_approver_queue_exists(user.id),
             )
             .scalar_subquery()
         )

@@ -19,6 +19,9 @@ export const can = {
   editDraft: (user: CurrentUser | null) => hasAnyRole(user, "researcher", "editor"),
   review: (user: CurrentUser | null) => hasAnyRole(user, "editor"),
   requestChanges: (user: CurrentUser | null) => hasAnyRole(user, "editor", "approver"),
+  approve: (user: CurrentUser | null) => hasAnyRole(user, "approver"),
+  publish: (user: CurrentUser | null) => hasAnyRole(user, "editor"),
+  /** @deprecated use approve */
   decide: (user: CurrentUser | null) => hasAnyRole(user, "approver"),
   manageTopics: (user: CurrentUser | null) => hasAnyRole(user, "editor"),
   viewAudit: (user: CurrentUser | null) => hasAnyRole(user, "editor", "approver"),

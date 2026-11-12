@@ -88,15 +88,21 @@ function PublishDialog({ draft, onClose }: { draft: Draft; onClose: () => void }
   );
 }
 
-/** Approval, publication, corrections and withdrawal. Only approvers see these controls. */
+/** Domain approval for the selected expert; publication and corrections for editors. */
 export function PublishPanel({
   draft,
   status,
   slug,
+  designatedApproverId,
+  canApproveThisRevision,
+  canPublishThisRevision,
 }: {
   draft: Draft;
   status: LanguageStatus;
   slug: string | null;
+  designatedApproverId: string | null;
+  canApproveThisRevision: boolean;
+  canPublishThisRevision: boolean;
 }) {
   const { t } = useI18n();
   const { user } = useAuth();
@@ -136,14 +142,18 @@ export function PublishPanel({
     onSuccess: close,
   });
 
-  if (!can.decide(user)) {
+  const showApprove = can.approve(user) && status === "ready_for_approval" && canApproveThisRevision;
+  const showPublish = can.publish(user) && status === "approved" && canPublishThisRevision;
+  const showPublishedActions = can.publish(user) && status === "published";
+
+  if (!showApprove && !showPublish && !showPublishedActions) {
     return null;
   }
 
   return (
     <section aria-labelledby="publish-heading" className="stack">
       <h2 id="publish-heading">{t("publish.panel")}</h2>
-      {status === "ready_for_approval" ? (
+      {showApprove ? (
         <>
           <p>{t("approve.lead", { revision: String(draft.current_revision_number) })}</p>
           <div className="button-row">
@@ -153,7 +163,14 @@ export function PublishPanel({
           </div>
         </>
       ) : null}
-      {status === "approved" ? (
+      {status === "ready_for_approval" && can.approve(user) && !canApproveThisRevision ? (
+        <p className="hint">
+          {designatedApproverId
+            ? t("approve.notDesignated")
+            : t("approve.awaitingDesignation")}
+        </p>
+      ) : null}
+      {showPublish ? (
         <>
           <p>{t("publish.lead", { revision: String(draft.current_revision_number) })}</p>
           <div className="button-row">
@@ -161,7 +178,10 @@ export function PublishPanel({
           </div>
         </>
       ) : null}
-      {status === "published" ? (
+      {status === "approved" && can.publish(user) && !canPublishThisRevision ? (
+        <p className="hint">{t("publish.notMarkingEditor")}</p>
+      ) : null}
+      {showPublishedActions ? (
         <>
           <p>{t("correction.lead")}</p>
           <div className="button-row">
@@ -173,9 +193,6 @@ export function PublishPanel({
             </Button>
           </div>
         </>
-      ) : null}
-      {status !== "ready_for_approval" && status !== "approved" && status !== "published" ? (
-        <p>{t("publish.notReady")}</p>
       ) : null}
 
       {dialog === "approve" ? (

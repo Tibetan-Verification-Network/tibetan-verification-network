@@ -173,14 +173,12 @@ async def test_review_thread_and_fact_check_topics_follow_view_access(
 
 
 @pytest.mark.usefixtures("db_session_for_api")
-async def test_publish_preview_is_read_only_and_approver_only(
+async def test_publish_preview_is_read_only_and_marking_editor_only(
     api_client_factory,
     db_session_for_api: AsyncSession,
 ) -> None:
-    author = await make_user(
-        db_session_for_api,
-        roles=(RoleCode.RESEARCHER, RoleCode.EDITOR),
-    )
+    author = await make_user(db_session_for_api, roles=(RoleCode.RESEARCHER,))
+    editor = await make_user(db_session_for_api, roles=(RoleCode.EDITOR,))
     approver = await make_user(db_session_for_api, roles=(RoleCode.APPROVER,))
     investigation = await make_investigation(
         db_session_for_api,
@@ -202,12 +200,33 @@ async def test_publish_preview_is_read_only_and_approver_only(
         )
         url = f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/publish-preview"
 
-        # The author is an editor and researcher, but publishing is the approver's action.
         assert (await author_client.get(url)).status_code == 404
 
+        await author_client.post(
+            f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/submit-for-review",
+            headers=csrf_headers(author_session["csrf_token"]),
+        )
+
+        async with api_client_factory() as editor_client:
+            editor_session = await login(editor_client, email=editor.email, password=PASSWORD)
+            await editor_client.post(
+                f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/mark-ready",
+                json={"approver_id": str(approver.id)},
+                headers=csrf_headers(editor_session["csrf_token"]),
+            )
+
         async with api_client_factory() as approver_client:
-            await login(approver_client, email=approver.email, password=PASSWORD)
-            response = await approver_client.get(url)
+            approver_session = await login(approver_client, email=approver.email, password=PASSWORD)
+            await approver_client.post(
+                f"/api/v1/editorial/factchecks/{fact_check_id}/languages/en/approve",
+                json={"expected_revision": revision},
+                headers=csrf_headers(approver_session["csrf_token"]),
+            )
+            assert (await approver_client.get(url)).status_code == 404
+
+        async with api_client_factory() as editor_client:
+            editor_session = await login(editor_client, email=editor.email, password=PASSWORD)
+            response = await editor_client.get(url)
             assert response.status_code == 200, response.text
             body = response.json()
             assert body["kind"] == "initial"
@@ -236,12 +255,20 @@ async def test_publish_preview_reports_missing_pieces_instead_of_a_snapshot(
         owner=author,
         assigned=[(approver, InvestigationAssignmentRole.CONTRIBUTOR)],
     )
+    editor = await make_user(db_session_for_api, roles=(RoleCode.EDITOR,))
     async with api_client_factory() as author_client:
         session = await login(author_client, email=author.email, password=PASSWORD)
         created = await _create_factcheck(author_client, session, investigation.id)
         async with api_client_factory() as approver_client:
             await login(approver_client, email=approver.email, password=PASSWORD)
-            response = await approver_client.get(
+            assert (
+                await approver_client.get(
+                    f"/api/v1/editorial/factchecks/{created['id']}/languages/en/publish-preview"
+                )
+            ).status_code == 404
+        async with api_client_factory() as editor_client:
+            await login(editor_client, email=editor.email, password=PASSWORD)
+            response = await editor_client.get(
                 f"/api/v1/editorial/factchecks/{created['id']}/languages/en/publish-preview"
             )
             assert response.status_code == 409

@@ -37,5 +37,7 @@ class GuardCode(StrEnum):
     NOT_AUTHOR = "not_author"
     IS_AUTHOR = "is_author"
     NOT_APPROVING_REVIEWER = "not_approving_reviewer"
+    NOT_READY_MARKING_EDITOR = "not_ready_marking_editor"
+    NOT_DESIGNATED_APPROVER = "not_designated_approver"
     IS_READY_MARKING_EDITOR = "is_ready_marking_editor"
     READINESS_FAILED = "readiness_failed"
