@@ -15,7 +15,7 @@ import { AppFrame, type NavItem } from "./AppFrame";
 /** Only links the person can use. The API still refuses everything else. */
 function navFor(user: CurrentUser | null): NavItem[] {
   const items: NavItem[] = [{ to: "/editorial", label: "nav.overview", end: true }];
-  if (can.triage(user)) {
+  if (can.viewInbox(user)) {
     items.push({ to: "/editorial/inbox", label: "nav.inbox" });
   }
   if (can.workEditorially(user)) {

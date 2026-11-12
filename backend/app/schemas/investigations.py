@@ -17,6 +17,7 @@ class InvestigationCreateRequest(BaseModel):
 
     claim_id: uuid.UUID | None = None
     submission_id: uuid.UUID | None = None
+    owner_user_id: uuid.UUID
 
     @model_validator(mode="after")
     def require_exactly_one_origin(self) -> InvestigationCreateRequest:

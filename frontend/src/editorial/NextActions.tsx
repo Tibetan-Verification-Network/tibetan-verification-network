@@ -67,14 +67,15 @@ function ActionCard({
 export function NextActions() {
   const { t } = useI18n();
   const { user } = useAuth();
+  const viewInbox = can.viewInbox(user);
   const triage = can.triage(user);
   const work = can.workEditorially(user);
   const editor = can.review(user);
   const approver = can.decide(user);
 
-  const inbox = useSubmissions({ workflow_status: "inbox" }, 5, triage);
-  const mine = useInvestigations({ mine: true }, 5, triage);
-  const drafts = useFactChecks({ mine: true }, 5, triage);
+  const inbox = useSubmissions({ workflow_status: "inbox" }, 5, viewInbox);
+  const mine = useInvestigations({ mine: true }, 5, work);
+  const drafts = useFactChecks({ mine: true }, 5, work);
   const review = useFactChecks({ workflow_status: "in_review" }, 5, editor);
   const queue = useApprovalQueue(approver);
 
@@ -85,7 +86,7 @@ export function NextActions() {
     <section aria-labelledby="next-actions-heading" className="stack">
       <h2 id="next-actions-heading">{t("dashboard.title")}</h2>
       <div className="card-list">
-        {triage ? (
+        {viewInbox ? (
           <ActionCard
             title="dashboard.inbox"
             emptyKey="dashboard.inbox.empty"
@@ -99,7 +100,7 @@ export function NextActions() {
             }))}
           />
         ) : null}
-        {triage ? (
+        {work ? (
           <ActionCard
             title="dashboard.investigations"
             emptyKey="dashboard.investigations.empty"
@@ -113,7 +114,7 @@ export function NextActions() {
             }))}
           />
         ) : null}
-        {triage ? (
+        {work ? (
           <ActionCard
             title="dashboard.drafts"
             emptyKey="dashboard.drafts.empty"

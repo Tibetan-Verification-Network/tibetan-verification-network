@@ -40,6 +40,7 @@ def _attempts(
     *,
     submission: uuid.UUID,
     investigation: uuid.UUID,
+    claim_id: uuid.UUID,
     fact_check: uuid.UUID,
     document: uuid.UUID,
     someone: uuid.UUID,
@@ -56,6 +57,18 @@ def _attempts(
     )
     return [
         # Researchers do not reveal contacts, manage topics, assign, review, approve, or publish.
+        Attempt(
+            researcher,
+            "POST",
+            f"/api/v1/editorial/submissions/{submission}/triage",
+            {"action": "reject", "reason": "Not for researchers."},
+        ),
+        Attempt(
+            researcher,
+            "POST",
+            "/api/v1/investigations",
+            {"claim_id": str(claim_id), "owner_user_id": str(someone)},
+        ),
         Attempt(researcher, "GET", f"/api/v1/editorial/submissions/{submission}/contact"),
         Attempt(researcher, "GET", "/api/v1/editorial/topics"),
         Attempt(
@@ -98,7 +111,7 @@ def _attempts(
             approver,
             "POST",
             f"/api/v1/editorial/submissions/{submission}/triage",
-            {"action": "open_investigation"},
+            {"action": "open_investigation", "owner_user_id": str(someone)},
         ),
         Attempt(approver, "GET", "/api/v1/editorial/staff"),
         Attempt(
@@ -183,6 +196,7 @@ async def test_hidden_controls_are_refused_by_the_api(
     attempts = _attempts(
         submission=submission.id,
         investigation=investigation.id,
+        claim_id=investigation.claim_id,
         fact_check=uuid.UUID(created["id"]),
         document=document.id,
         someone=users[RoleCode.EDITOR].id,

@@ -60,9 +60,9 @@ async def test_platform_admin_without_editorial_role_is_denied(db_session: Async
     ("action", "expected"),
     [
         (Action.SUBMISSION_LIST, True),
-        (Action.SUBMISSION_TRIAGE, True),
+        (Action.SUBMISSION_TRIAGE, False),
         (Action.SUBMISSION_CONTACT_VIEW, False),
-        (Action.INVESTIGATION_CREATE, True),
+        (Action.INVESTIGATION_CREATE, False),
         (Action.INVESTIGATION_LIST, True),
         (Action.INVESTIGATION_ASSIGN, False),
         (Action.ARCHIVE_RECLASSIFY, False),

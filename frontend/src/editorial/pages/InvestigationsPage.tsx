@@ -1,8 +1,18 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
-import { useClaims, useEditorialMutation, useInvestigations } from "../../api/editorial/queries";
-import { WORKFLOW_STATUSES, type InvestigationDetail } from "../../api/editorial/types";
+import {
+  useClaims,
+  useEditorialMutation,
+  useInvestigations,
+  useStaffDirectory,
+} from "../../api/editorial/queries";
+import {
+  WORKFLOW_STATUSES,
+  type InvestigationCreateBody,
+  type InvestigationDetail,
+  type StaffMember,
+} from "../../api/editorial/types";
 import { useAuth } from "../../auth/useAuth";
 import { Button } from "../../components/Button";
 import { CheckboxField, SelectField } from "../../components/Fields";
@@ -16,6 +26,10 @@ import { LoadMore } from "../components/LoadMore";
 import { WorkflowBadge } from "../components/StatusBadge";
 import { can } from "../roles";
 import { excerpt } from "../text";
+
+function activeResearchers(members: StaffMember[]): StaffMember[] {
+  return members.filter((member) => member.roles.includes("researcher"));
+}
 
 const RESEARCH_STATUSES = WORKFLOW_STATUSES.filter((status) =>
   [
@@ -34,12 +48,15 @@ function NewInvestigation() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [claimId, setClaimId] = useState("");
+  const [ownerId, setOwnerId] = useState("");
   const claims = useClaims(open);
+  const staff = useStaffDirectory(open);
+  const researchers = activeResearchers(staff.data?.items ?? []);
 
-  const create = useEditorialMutation<string, InvestigationDetail>({
+  const create = useEditorialMutation<InvestigationCreateBody, InvestigationDetail>({
     success: "investigation.created",
-    mutationFn: (id, api) =>
-      api.send<InvestigationDetail>("POST", "/api/v1/investigations", { claim_id: id }),
+    mutationFn: (body, api) =>
+      api.send<InvestigationDetail>("POST", "/api/v1/investigations", body),
     onSuccess: (data) => {
       setOpen(false);
       void navigate(`/editorial/investigations/${data.investigation.id}`);
@@ -56,14 +73,16 @@ function NewInvestigation() {
           title={t("investigations.new")}
           consequence={t("investigations.newConsequence")}
           confirmLabel={t("investigations.new")}
-          confirmDisabled={claimId === ""}
+          confirmDisabled={claimId === "" || ownerId === ""}
           pending={create.isPending}
           error={<EditorialError error={create.error} />}
           onCancel={() => {
             create.reset();
             setOpen(false);
           }}
-          onConfirm={() => create.mutate(claimId)}
+          onConfirm={() =>
+            create.mutate({ claim_id: claimId, owner_user_id: ownerId })
+          }
         >
           <SelectField
             id="new-investigation-claim"
@@ -78,6 +97,24 @@ function NewInvestigation() {
               })),
             ]}
           />
+          {staff.isPending ? (
+            <p role="status">{t("loading")}</p>
+          ) : (
+            <SelectField
+              id="new-investigation-owner"
+              label={t("editorial.researcherOwner")}
+              hint={t("editorial.researcherOwnerHint")}
+              value={ownerId}
+              onChange={(event) => setOwnerId(event.target.value)}
+              options={[
+                { value: "", label: t("editorial.choose") },
+                ...researchers.map((member) => ({
+                  value: member.id,
+                  label: member.display_name ?? member.email,
+                })),
+              ]}
+            />
+          )}
         </ConfirmDialog>
       ) : null}
     </>

@@ -10,9 +10,10 @@ export function hasAnyRole(user: CurrentUser | null, ...roles: StaffRole[]): boo
 }
 
 export const can = {
-  triage: (user: CurrentUser | null) => hasAnyRole(user, "researcher", "editor"),
+  viewInbox: (user: CurrentUser | null) => hasAnyRole(user, "researcher", "editor"),
+  triage: (user: CurrentUser | null) => hasAnyRole(user, "editor"),
   revealContact: (user: CurrentUser | null) => hasAnyRole(user, "editor"),
-  createInvestigation: (user: CurrentUser | null) => hasAnyRole(user, "researcher", "editor"),
+  createInvestigation: (user: CurrentUser | null) => hasAnyRole(user, "editor"),
   assign: (user: CurrentUser | null) => hasAnyRole(user, "editor"),
   writeEvidence: (user: CurrentUser | null) => hasAnyRole(user, "researcher", "editor"),
   editDraft: (user: CurrentUser | null) => hasAnyRole(user, "researcher", "editor"),

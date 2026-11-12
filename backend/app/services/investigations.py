@@ -11,7 +11,7 @@ from sqlalchemy import select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.policy import scope_investigations
+from app.core.policy import is_editor, scope_investigations
 from app.db.enums import InvestigationAssignmentRole, WorkflowStatus
 from app.models.assignments import InvestigationAssignment
 from app.models.identity import User
@@ -33,7 +33,12 @@ from app.schemas.investigations import (
     SourceResponse,
 )
 from app.services.audit import AuditEventType, record_audit_event
-from app.services.intake import _editorial_staff_user, decode_keyset_cursor, encode_keyset_cursor
+from app.services.intake import (
+    _active_researcher_user,
+    _editorial_staff_user,
+    decode_keyset_cursor,
+    encode_keyset_cursor,
+)
 
 
 def _active_assignments(investigation: Investigation) -> list[InvestigationAssignment]:
@@ -103,6 +108,12 @@ async def create_investigation(
     actor: User,
     body: InvestigationCreateRequest,
 ) -> InvestigationDetailResponse:
+    if not is_editor(actor):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    owner = await _active_researcher_user(session, body.owner_user_id)
+    if owner is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
     claim_id = body.claim_id
     if body.submission_id is not None:
         submission = await session.get(Submission, body.submission_id)
@@ -121,7 +132,7 @@ async def create_investigation(
 
     investigation = Investigation(
         claim_id=claim_id,
-        owner_id=actor.id,
+        owner_id=owner.id,
         workflow_status=WorkflowStatus.RESEARCHING,
         created_by_id=actor.id,
         updated_by_id=actor.id,
@@ -131,7 +142,7 @@ async def create_investigation(
     session.add(
         InvestigationAssignment(
             investigation_id=investigation.id,
-            user_id=actor.id,
+            user_id=owner.id,
             assignment_role=InvestigationAssignmentRole.OWNER,
             assigned_by_id=actor.id,
         )
@@ -142,7 +153,7 @@ async def create_investigation(
         actor_user_id=actor.id,
         subject_type="investigation",
         subject_id=investigation.id,
-        payload={"claim_id": str(claim_id)},
+        payload={"claim_id": str(claim_id), "owner_id": str(owner.id)},
     )
     await session.flush()
     loaded = await _load_investigation_graph(session, investigation.id)

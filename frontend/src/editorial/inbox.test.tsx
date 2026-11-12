@@ -76,9 +76,19 @@ describe("submission detail", () => {
     await user.click(within(dialog).getByRole("button", { name: "Create canonical claim" }));
     expect(api.callsTo("POST", /triage$/)[0]?.body).toMatchObject({ action: "create_claim" });
     await user.click(await screen.findByRole("button", { name: "Open investigation" }));
-    await user.click(
-      within(await screen.findByRole("dialog")).getByRole("button", { name: "Open investigation" }),
+    const openDialog = await screen.findByRole("dialog");
+    await user.selectOptions(
+      within(openDialog).getByLabelText("Researcher owner"),
+      STAFF.researcher.display_name,
     );
+    await user.click(within(openDialog).getByRole("button", { name: "Open investigation" }));
+    const openCall = api.callsTo("POST", /triage$/).find(
+      (call) => (call.body as { action?: string }).action === "open_investigation",
+    );
+    expect(openCall?.body).toEqual({
+      action: "open_investigation",
+      owner_user_id: ID.researcher,
+    });
     expect(
       await screen.findByRole("heading", { level: 1, name: /river stops flowing/i }),
     ).toBeInTheDocument();
@@ -90,10 +100,13 @@ describe("submission detail", () => {
     ).toBe(true);
   });
 
-  it("shows researchers the triage controls but not the contact reveal", async () => {
+  it("keeps researcher inbox read-only without triage or contact reveal", async () => {
     installEditorialApi({ user: STAFF.researcher });
     renderApp(`/editorial/inbox/${ID.submission}`);
-    expect(await screen.findByRole("button", { name: "Reject" })).toBeInTheDocument();
+    expect(await screen.findByText("The river stops flowing every winter.")).toBeInTheDocument();
+    expect(screen.getByText("Is the river dry in winter?")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reject" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mark as duplicate" })).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Reveal contact details" }),
     ).not.toBeInTheDocument();

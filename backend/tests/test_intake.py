@@ -206,6 +206,11 @@ async def test_triage_open_investigation_and_duplicate_linking(
     api_client: AsyncClient,
     db_session_for_api: AsyncSession,
 ) -> None:
+    owner = await make_user(
+        db_session_for_api,
+        email="inv-owner@example.org",
+        roles=(RoleCode.RESEARCHER,),
+    )
     submission = await make_submission(
         db_session_for_api,
         claim_text="Open investigation from triage",
@@ -214,12 +219,92 @@ async def test_triage_open_investigation_and_duplicate_linking(
     response = await api_client.post(
         f"/api/v1/editorial/submissions/{submission.id}/triage",
         headers=csrf_headers(session["csrf_token"]),
-        json={"action": "open_investigation"},
+        json={"action": "open_investigation", "owner_user_id": str(owner.id)},
     )
     assert response.status_code == 200
     payload = response.json()
     assert payload["submission"]["workflow_status"] == WorkflowStatus.TRIAGED.value
     assert payload["claim"] is not None
+
+
+@pytest.mark.usefixtures("db_session_for_api")
+async def test_researcher_cannot_triage_submissions(
+    api_client: AsyncClient,
+    db_session_for_api: AsyncSession,
+) -> None:
+    submission = await make_submission(db_session_for_api)
+    researcher = await make_user(
+        db_session_for_api,
+        email="nontriage@example.org",
+        roles=(RoleCode.RESEARCHER,),
+    )
+    session = await login(api_client, email=researcher.email, password=STRONG_PASSWORD)
+    response = await api_client.post(
+        f"/api/v1/editorial/submissions/{submission.id}/triage",
+        headers=csrf_headers(session["csrf_token"]),
+        json={"action": "reject", "reason": "Should be denied"},
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.usefixtures("db_session_for_api")
+async def test_open_investigation_assigns_researcher_owner(
+    api_client: AsyncClient,
+    db_session_for_api: AsyncSession,
+) -> None:
+    from app.models.assignments import InvestigationAssignment
+    from app.models.research import Investigation
+
+    editor = await make_user(db_session_for_api, roles=(RoleCode.EDITOR,))
+    owner = await make_user(
+        db_session_for_api,
+        email="handoff-owner@example.org",
+        roles=(RoleCode.RESEARCHER,),
+    )
+    other = await make_user(
+        db_session_for_api,
+        email="other-researcher@example.org",
+        roles=(RoleCode.RESEARCHER,),
+    )
+    submission = await make_submission(db_session_for_api)
+    editor_session = await login(api_client, email=editor.email, password=STRONG_PASSWORD)
+    opened = await api_client.post(
+        f"/api/v1/editorial/submissions/{submission.id}/triage",
+        headers=csrf_headers(editor_session["csrf_token"]),
+        json={"action": "open_investigation", "owner_user_id": str(owner.id)},
+    )
+    assert opened.status_code == 200
+    investigation = await db_session_for_api.scalar(
+        select(Investigation).where(Investigation.claim_id == submission.claim_id)
+    )
+    assert investigation is not None
+    assert investigation.owner_id == owner.id
+    assert investigation.created_by_id == editor.id
+    assignment = await db_session_for_api.scalar(
+        select(InvestigationAssignment).where(
+            InvestigationAssignment.investigation_id == investigation.id,
+            InvestigationAssignment.removed_at.is_(None),
+        )
+    )
+    assert assignment is not None
+    assert assignment.user_id == owner.id
+    assert assignment.assigned_by_id == editor.id
+
+    owner_session = await login(api_client, email=owner.email, password=STRONG_PASSWORD)
+    assert (
+        await api_client.get(
+            f"/api/v1/investigations/{investigation.id}",
+            headers=csrf_headers(owner_session["csrf_token"]),
+        )
+    ).status_code == 200
+
+    other_session = await login(api_client, email=other.email, password=STRONG_PASSWORD)
+    assert (
+        await api_client.get(
+            f"/api/v1/investigations/{investigation.id}",
+            headers=csrf_headers(other_session["csrf_token"]),
+        )
+    ).status_code == 404
 
 
 async def test_concurrent_triage_requests_leave_one_final_state(

@@ -173,7 +173,9 @@ export const editorialEn = {
   "inbox.triage.assignConsequence": "The chosen person will see this submission as theirs.",
   "inbox.triage.open": "Open investigation",
   "inbox.triage.openConsequence":
-    "Starts an investigation for this claim. You will be taken to its workspace.",
+    "Starts an investigation for this claim and assigns it to the selected researcher.",
+  "editorial.researcherOwner": "Researcher owner",
+  "editorial.researcherOwnerHint": "This person will own the investigation and do the research.",
   "inbox.triage.done": "Triage saved.",
   "inbox.triage.opened": "Investigation opened.",
 
@@ -182,7 +184,8 @@ export const editorialEn = {
   "investigations.empty": "No investigations match.",
   "investigations.mine": "Only mine",
   "investigations.new": "New investigation",
-  "investigations.newConsequence": "Starts an investigation for the chosen claim.",
+  "investigations.newConsequence":
+    "Starts an investigation for the chosen claim and assigns it to the selected researcher.",
   "investigations.claim": "Claim",
   "investigations.updated": "Updated {date}",
   "investigation.title": "Investigation",

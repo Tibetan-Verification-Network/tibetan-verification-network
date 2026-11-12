@@ -112,7 +112,13 @@ export type TriageBody =
   | { action: "link_to_claim"; claim_id: string }
   | { action: "create_claim"; canonical_text: string }
   | { action: "assign"; user_id: string }
-  | { action: "open_investigation" };
+  | { action: "open_investigation"; owner_user_id: string };
+
+export interface InvestigationCreateBody {
+  claim_id?: string;
+  submission_id?: string;
+  owner_user_id: string;
+}
 
 /* Staff */
 

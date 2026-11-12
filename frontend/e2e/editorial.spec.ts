@@ -180,8 +180,11 @@ test.describe("editorial workflow", () => {
     await expectNoAxeViolations(editor);
 
     await editor.getByRole("button", { name: "Open investigation" }).click();
-    await expect(dialog(editor)).toContainText("Starts an investigation");
+    await expect(dialog(editor)).toContainText("assigns it to the selected researcher");
     await expectNoAxeViolations(editor);
+    await dialog(editor)
+      .getByLabel("Researcher owner")
+      .selectOption({ label: STAFF.author.name });
     await dialog(editor).getByRole("button", { name: "Open investigation" }).click();
     await expect(editor).toHaveURL(/\/editorial\/investigations\/[0-9a-f-]{36}$/);
     investigationUrl = new URL(editor.url()).pathname;

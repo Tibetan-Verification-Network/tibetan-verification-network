@@ -271,4 +271,6 @@ export const bo: Record<PublicMessageKey, string> & Partial<Record<MessageKey, s
   "role.researcher": "ཞིབ་འཇུག་པ།",
   "role.editor": "རྩོམ་སྒྲིག་པ།",
   "role.approver": "ཆོག་མཆན་པ།",
+  "editorial.researcherOwner": "ཞིབ་འཇུག་གི་བདག་སྤྲོད།",
+  "editorial.researcherOwnerHint": "མི་འདི་ཞིབ་འཇུག་གི་བདག་པོ་ཡིན་ཞིང་ཞིབ་འཇུག་ལས་ཀ་བྱེད་དགོས།",
 };

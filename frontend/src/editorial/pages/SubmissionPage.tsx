@@ -13,6 +13,7 @@ import {
 import type {
   InvestigationListItem,
   Page,
+  StaffMember,
   SubmissionDetail,
   TriageBody,
 } from "../../api/editorial/types";
@@ -32,6 +33,10 @@ import { can } from "../roles";
 import { excerpt, safeHttpUrl } from "../text";
 
 type DialogKind = "reject" | "hold" | "duplicate" | "createClaim" | "linkClaim" | "assign" | "open";
+
+function activeResearchers(members: StaffMember[]): StaffMember[] {
+  return members.filter((member) => member.roles.includes("researcher"));
+}
 
 export function SubmissionPage() {
   const { id = "" } = useParams();
@@ -269,11 +274,13 @@ function TriagePanel({ id, detail }: { id: string; detail: SubmissionDetail }) {
   const [canonical, setCanonical] = useState(detail.submission.claim_text);
   const [claimId, setClaimId] = useState("");
   const [assignee, setAssignee] = useState("");
+  const [researcherOwner, setResearcherOwner] = useState("");
 
   const triage = useTriage(id, "inbox.triage.done");
   const open = useTriage(id, "inbox.triage.opened");
   const claims = useClaims(dialog === "linkClaim");
-  const staff = useStaffDirectory(dialog === "assign");
+  const staff = useStaffDirectory(dialog === "assign" || dialog === "open");
+  const researchers = activeResearchers(staff.data?.items ?? []);
 
   function close() {
     triage.reset();
@@ -317,11 +324,33 @@ function TriagePanel({ id, detail }: { id: string; detail: SubmissionDetail }) {
           title={t("inbox.triage.open")}
           consequence={t("inbox.triage.openConsequence")}
           confirmLabel={t("inbox.triage.open")}
+          confirmDisabled={researcherOwner === ""}
           pending={open.isPending}
           error={<EditorialError error={open.error} />}
           onCancel={close}
-          onConfirm={() => open.mutate({ action: "open_investigation" })}
-        />
+          onConfirm={() =>
+            open.mutate({ action: "open_investigation", owner_user_id: researcherOwner })
+          }
+        >
+          {staff.isPending ? (
+            <p role="status">{t("loading")}</p>
+          ) : (
+            <SelectField
+              id="triage-researcher-owner"
+              label={t("editorial.researcherOwner")}
+              hint={t("editorial.researcherOwnerHint")}
+              value={researcherOwner}
+              onChange={(event) => setResearcherOwner(event.target.value)}
+              options={[
+                { value: "", label: t("editorial.choose") },
+                ...researchers.map((member) => ({
+                  value: member.id,
+                  label: member.display_name ?? member.email,
+                })),
+              ]}
+            />
+          )}
+        </ConfirmDialog>
       ) : null}
 
       {dialog === "reject" || dialog === "hold" ? (

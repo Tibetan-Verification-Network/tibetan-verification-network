@@ -22,6 +22,34 @@ describe("investigations list", () => {
     await screen.findByRole("link", { name: /river stops flowing/i });
     expect(screen.queryByRole("button", { name: "New investigation" })).not.toBeInTheDocument();
   });
+
+  it("does not offer a new investigation to researchers", async () => {
+    installEditorialApi({ user: STAFF.researcher });
+    renderApp("/editorial/investigations");
+    await screen.findByRole("link", { name: /river stops flowing/i });
+    expect(screen.queryByRole("button", { name: "New investigation" })).not.toBeInTheDocument();
+  });
+
+  it("requires a researcher owner when creating an investigation", async () => {
+    const api = installEditorialApi();
+    const user = userEvent.setup();
+    renderApp("/editorial/investigations");
+    await user.click(await screen.findByRole("button", { name: "New investigation" }));
+    const dialog = await screen.findByRole("dialog");
+    const confirm = within(dialog).getByRole("button", { name: "New investigation" });
+    expect(confirm).toBeDisabled();
+    await user.selectOptions(within(dialog).getByLabelText("Claim"), ID.claim);
+    expect(confirm).toBeDisabled();
+    await user.selectOptions(
+      within(dialog).getByLabelText("Researcher owner"),
+      STAFF.researcher.display_name,
+    );
+    await user.click(confirm);
+    expect(api.callsTo("POST", /^\/api\/v1\/investigations$/)[0]?.body).toEqual({
+      claim_id: ID.claim,
+      owner_user_id: ID.researcher,
+    });
+  });
 });
 
 describe("investigation workspace", () => {

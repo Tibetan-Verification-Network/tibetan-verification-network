@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import Settings
-from app.core.policy import is_editor, scope_submissions
+from app.core.policy import is_editor, is_researcher, scope_submissions
 from app.core.text_validation import TextValidationError, assert_submission_text, nfc_fingerprint
 from app.core.urls import UnsafeUrlError, parse_submission_source_url
 from app.db.enums import InvestigationAssignmentRole, RoleCode, SubmissionChannel, WorkflowStatus
@@ -347,6 +347,13 @@ async def _editorial_staff_user(session: AsyncSession, user_id: uuid.UUID) -> Us
     return user
 
 
+async def _active_researcher_user(session: AsyncSession, user_id: uuid.UUID) -> User | None:
+    user = await _editorial_staff_user(session, user_id)
+    if user is None or not is_researcher(user):
+        return None
+    return user
+
+
 async def apply_triage_action(
     session: AsyncSession,
     *,
@@ -357,6 +364,8 @@ async def apply_triage_action(
 ) -> SubmissionDetailResponse:
     submission = await _load_submission_for_update(session, submission_id)
     if submission is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    if not is_editor(actor):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     audit_payload: dict[str, Any] = {"action": body.action}
@@ -412,6 +421,9 @@ async def apply_triage_action(
         submission.assigned_to_id = body.user_id
         audit_payload["assigned_to_id"] = str(body.user_id)
     elif body.action == "open_investigation":
+        owner = await _active_researcher_user(session, body.owner_user_id)
+        if owner is None:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
         claim_id = submission.claim_id
         if claim_id is None:
             claim = Claim(canonical_text=submission.claim_text, created_by_id=actor.id)
@@ -421,21 +433,23 @@ async def apply_triage_action(
             submission.claim_id = claim_id
         investigation = Investigation(
             claim_id=claim_id,
-            owner_id=actor.id,
+            owner_id=owner.id,
             workflow_status=WorkflowStatus.RESEARCHING,
             created_by_id=actor.id,
+            updated_by_id=actor.id,
         )
         session.add(investigation)
         await session.flush()
         session.add(
             InvestigationAssignment(
                 investigation_id=investigation.id,
-                user_id=actor.id,
+                user_id=owner.id,
                 assignment_role=InvestigationAssignmentRole.OWNER,
                 assigned_by_id=actor.id,
             )
         )
         audit_payload["investigation_id"] = str(investigation.id)
+        audit_payload["owner_id"] = str(owner.id)
     else:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
 

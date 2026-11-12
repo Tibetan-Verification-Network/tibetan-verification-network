@@ -161,8 +161,11 @@ def can(
     if is_platform_admin_only(user):
         return False
 
-    if action in {Action.SUBMISSION_LIST, Action.SUBMISSION_TRIAGE}:
+    if action == Action.SUBMISSION_LIST:
         return is_researcher(user) or is_editor(user)
+
+    if action == Action.SUBMISSION_TRIAGE:
+        return is_editor(user)
 
     if action == Action.SUBMISSION_CONTACT_VIEW:
         if isinstance(obj, Submission):
@@ -170,7 +173,7 @@ def can(
         return is_editor(user)
 
     if action == Action.INVESTIGATION_CREATE:
-        return is_researcher(user) or is_editor(user)
+        return is_editor(user)
 
     if action == Action.INVESTIGATION_LIST:
         return has_editorial_role(user)

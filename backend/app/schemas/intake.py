@@ -153,6 +153,7 @@ class TriageOpenInvestigationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     action: Literal["open_investigation"]
+    owner_user_id: uuid.UUID
 
 
 TriageRequest = Annotated[
