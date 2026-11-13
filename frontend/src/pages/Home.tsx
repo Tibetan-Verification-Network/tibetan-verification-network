@@ -30,7 +30,7 @@ const SEARCH_PROMPTS = [
     en: "What is the source of this claim?",
   },
   {
-    bo: "པར་འདི་ངོ་མ་ཡིན་ནམ།",
+    bo: "དྲ་པར་འདི་ངོ་མ་ཡིན་ནམ།",
     en: "Is this image authentic?",
   },
   {
@@ -38,7 +38,7 @@ const SEARCH_PROMPTS = [
     en: "Who is behind this information?",
   },
   {
-    bo: "བརྒྱུད་སྐུལ་མ་བྱས་གོང་ལ་ཞིབ་བཤེར་གྱིས།",
+    bo: "བརྒྱུད་སྐུར་མ་བྱས་གོང་ལ་ཞིབ་བཤེར་གྱིས།",
     en: "Verify before you share.",
   },
 ];
