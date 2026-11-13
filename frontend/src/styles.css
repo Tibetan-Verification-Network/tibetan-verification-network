@@ -2444,6 +2444,60 @@ blockquote {
   font-size: 1.05rem;
 }
 
+.table-scroll {
+  margin-top: 1rem;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.shell-editorial .data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.shell-editorial .data-table th,
+.shell-editorial .data-table td {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--line);
+  text-align: start;
+  vertical-align: top;
+}
+
+.shell-editorial .data-table thead th {
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  background: var(--muted);
+}
+
+.shell-editorial .data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.shell-editorial .data-table tbody tr:hover td {
+  background: rgb(243 232 208 / 35%);
+}
+
+.shell-editorial .data-table .table-cell-list {
+  margin: 0;
+}
+
+.shell-editorial .data-table .table-cell-list li + li {
+  margin-top: 0.45rem;
+}
+
+.shell-editorial .data-table td.card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
 .shell-editorial ul.card-list {
   grid-template-columns: 1fr;
 }

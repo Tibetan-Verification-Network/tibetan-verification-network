@@ -92,37 +92,53 @@ export function FactChecksPage() {
         <p>{t("factchecks.empty")}</p>
       ) : (
         <>
-          <ul className="card-list">
-            {list.items.map((item) => {
-              const title =
-                item.languages.find((entry) => entry.title)?.title ??
-                item.public_slug ??
-                t("factcheck.untitled");
-              return (
-                <li key={item.id} className="card">
-                  <p className="badge-row">
-                    <WorkflowBadge status={item.workflow_status} />
-                  </p>
-                  <h2 className="card-title">
-                    <Link to={`/editorial/factchecks/${item.id}`}>{title}</Link>
-                  </h2>
-                  <ul className="inline-list">
-                    {item.languages.map((entry) => (
-                      <li key={entry.language}>
-                        <Link
-                          to={`/editorial/factchecks/${item.id}/${entry.language}`}
-                          aria-label={`${t(`language.${entry.language}`)}: ${t(`status.language.${entry.editorial_status}`)}`}
-                        >
-                          {t(`language.${entry.language}`)}
-                        </Link>{" "}
-                        <LanguageStatusBadge status={entry.editorial_status} />
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">{t("inbox.filter.status")}</th>
+                  <th scope="col">{t("factchecks.table.title")}</th>
+                  <th scope="col">{t("factchecks.table.languages")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.items.map((item) => {
+                  const title =
+                    item.languages.find((entry) => entry.title)?.title ??
+                    item.public_slug ??
+                    t("factcheck.untitled");
+                  return (
+                    <tr key={item.id}>
+                      <td>
+                        <WorkflowBadge status={item.workflow_status} />
+                      </td>
+                      <td>
+                        <Link className="text-link" to={`/editorial/factchecks/${item.id}`}>
+                          {title}
+                        </Link>
+                      </td>
+                      <td>
+                        <ul className="plain-list table-cell-list">
+                          {item.languages.map((entry) => (
+                            <li key={entry.language}>
+                              <Link
+                                className="text-link"
+                                to={`/editorial/factchecks/${item.id}/${entry.language}`}
+                                aria-label={`${t(`language.${entry.language}`)}: ${t(`status.language.${entry.editorial_status}`)}`}
+                              >
+                                {t(`language.${entry.language}`)}
+                              </Link>{" "}
+                              <LanguageStatusBadge status={entry.editorial_status} />
+                            </li>
+                          ))}
+                        </ul>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
           <LoadMore
             hasMore={list.hasNextPage}
             loading={list.isFetchingNextPage}

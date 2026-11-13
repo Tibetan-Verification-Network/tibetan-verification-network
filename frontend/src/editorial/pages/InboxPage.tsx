@@ -71,22 +71,36 @@ export function InboxPage() {
         <p>{t("inbox.empty")}</p>
       ) : (
         <>
-          <ul className="card-list">
-            {list.items.map((item) => (
-              <li key={item.id} className="card">
-                <p className="badge-row">
-                  <WorkflowBadge status={item.workflow_status} />
-                </p>
-                <h2 className="card-title">
-                  <Link to={`/editorial/inbox/${item.id}`}>{excerpt(item.claim_text, 160)}</Link>
-                </h2>
-                <p className="card-meta">
-                  <span>{t(`inbox.channel.${item.channel}`)}</span>
-                  <span>{t("inbox.received", { date: formatDate(locale, item.created_at) })}</span>
-                </p>
-              </li>
-            ))}
-          </ul>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">{t("inbox.filter.status")}</th>
+                  <th scope="col">{t("inbox.table.claim")}</th>
+                  <th scope="col">{t("inbox.filter.channel")}</th>
+                  <th scope="col">{t("inbox.table.received")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.items.map((item) => (
+                  <tr key={item.id}>
+                    <td>
+                      <WorkflowBadge status={item.workflow_status} />
+                    </td>
+                    <td>
+                      <Link className="text-link" to={`/editorial/inbox/${item.id}`}>
+                        {excerpt(item.claim_text, 160)}
+                      </Link>
+                    </td>
+                    <td>{t(`inbox.channel.${item.channel}`)}</td>
+                    <td>
+                      <time dateTime={item.created_at}>{formatDate(locale, item.created_at)}</time>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <LoadMore
             hasMore={list.hasNextPage}
             loading={list.isFetchingNextPage}

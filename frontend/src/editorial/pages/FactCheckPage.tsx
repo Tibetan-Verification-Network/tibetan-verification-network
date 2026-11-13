@@ -182,38 +182,59 @@ export function FactCheckPage() {
 
             <section aria-labelledby="languages-heading" className="stack">
               <h2 id="languages-heading">{t("factcheck.languages")}</h2>
-              <ul className="card-list">
-                {detail.languages.map((language) => (
-                  <li key={language.language} className="card">
-                    <h3 className="card-title">
-                      <Link to={`/editorial/factchecks/${id}/${language.language}`}>
-                        {t(`language.${language.language}`)}
-                      </Link>
-                    </h3>
-                    <p className="badge-row">
-                      <LanguageStatusBadge status={language.editorial_status} />
-                      <span className="status-badge">
-                        {t(`translation.${language.translation_status}`)}
-                      </span>
-                    </p>
-                    <p className="card-meta">
-                      <span>
-                        {t("approvals.revision", {
-                          revision: String(language.current_revision_number),
-                        })}
-                      </span>
-                      {language.live_version_number !== null ? (
-                        <span>
-                          {t("factcheck.live", { number: String(language.live_version_number) })}
-                        </span>
-                      ) : null}
-                      {language.published_at ? (
-                        <span>{formatDate(locale, language.published_at)}</span>
-                      ) : null}
-                    </p>
-                  </li>
-                ))}
-              </ul>
+              <div className="table-scroll">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">{t("language.label")}</th>
+                      <th scope="col">{t("inbox.filter.status")}</th>
+                      <th scope="col">{t("factcheck.table.translation")}</th>
+                      <th scope="col">{t("factcheck.table.details")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detail.languages.map((language) => (
+                      <tr key={language.language}>
+                        <td>
+                          <Link
+                            className="text-link"
+                            to={`/editorial/factchecks/${id}/${language.language}`}
+                          >
+                            {t(`language.${language.language}`)}
+                          </Link>
+                        </td>
+                        <td>
+                          <LanguageStatusBadge status={language.editorial_status} />
+                        </td>
+                        <td>
+                          <span className="status-badge">
+                            {t(`translation.${language.translation_status}`)}
+                          </span>
+                        </td>
+                        <td className="card-meta">
+                          <span>
+                            {t("approvals.revision", {
+                              revision: String(language.current_revision_number),
+                            })}
+                          </span>
+                          {language.live_version_number !== null ? (
+                            <span>
+                              {t("factcheck.live", { number: String(language.live_version_number) })}
+                            </span>
+                          ) : null}
+                          {language.published_at ? (
+                            <span>
+                              <time dateTime={language.published_at}>
+                                {formatDate(locale, language.published_at)}
+                              </time>
+                            </span>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </section>
 
             <SlugForm
