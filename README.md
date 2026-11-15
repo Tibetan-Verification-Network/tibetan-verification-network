@@ -104,6 +104,7 @@ GitHub Actions runs the same checks in independent jobs. See [docs/testing.md](d
 
 ## Documentation
 
+- [Application features (internal)](docs/application-features.md) — current product capabilities for team onboarding and planning
 - [System design document](docs/design-document.md) — architecture, API, security, deployment, and roadmap
 - [Local development](docs/local-development.md) — environment, services, and migrations
 - [Testing](docs/testing.md) — pytest, Vitest, accessibility, and CI

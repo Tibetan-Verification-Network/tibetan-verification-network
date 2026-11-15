@@ -4,7 +4,7 @@
 **Product name in application:** Tibetan Verification Network (`PRODUCT_NAME` in `backend/app/core/constants.py`)  
 **API version:** `0.1.0`  
 **Primary requirements source:** [Tibetan_FactCheck_PRD_and_Design.md](Tibetan_FactCheck_PRD_and_Design.md) (working name “Tibetan FactCheck” in that file)  
-**Last aligned with codebase:** October 2026  
+**Last aligned with codebase:** November 2026  
 
 Facts below come from code, configuration, models, routes, tests, and deployment-related files unless labeled **ASSUMPTION** or **OPEN QUESTION**.
 
@@ -14,9 +14,67 @@ Facts below come from code, configuration, models, routes, tests, and deployment
 
 The Tibetan Verification Network (TVN) is a bilingual (Tibetan `bo`, English `en`) fact-checking platform with a public read surface, anonymous claim submission, and an invite-only editorial workspace. The backend is a FastAPI service on PostgreSQL with Alembic migrations, object-level authorization, a workflow engine for submissions through publication, immutable article snapshots, and a denormalized public search index. The frontend is a React 19 SPA (Vite) with locale-prefixed public routes, a full editorial dashboard, CSRF-aware session auth, and optional Cloudflare Pages Functions for SEO metadata.
 
-Staff accounts are created only via administrator invites; there is no public registration. Sensitive research (investigations, restricted archive, submitter contact data) is isolated from public APIs. Publication requires human review, independence guards (distinct author, ready-marking editor, approver), and checksum-verified snapshots.
+Staff accounts are created only via administrator invites; there is no public registration. Sensitive research (investigations, restricted archive, submitter contact data) is isolated from public APIs. Publication requires human review, independence guards (distinct author, ready-marking editor, domain-expert approver selected at mark-ready, marking editor publishes after approval), and checksum-verified snapshots.
 
-**Not implemented in code today:** AI research execution (schema-only `research_runs`), automated email for invites, production deploy workflows, AWS/Azure infrastructure-as-code, and public archive document delivery.
+**Not implemented in code today:** AI research execution (schema-only `research_runs`; see [AI-layer.md](AI-layer.md) for Phase 5 planning only), automated email for invites, automated production deploy workflows in GitHub Actions, and public archive document delivery.
+
+---
+
+## 1.1 How the running application is organized
+
+Use this section as a map when exploring the repository or a local stack (`make start` after `make migrate`).
+
+### Public reader experience (no login)
+
+| What | Where |
+| --- | --- |
+| UI entry | React SPA via Vite; locale prefixes `/en/` and `/bo/` (`frontend/src/routes.tsx`) |
+| Home, search, article detail, topics, submit claim | `frontend/src/pages/` (`Home`, `SearchPage`, `ArticlePage`, `TopicsPage`, `SubmitPage`, …) |
+| Static information pages | `AboutPage`, `MembershipPage`, demo `ExamplePage` under each locale |
+| API (read-only, no cookies) | `GET /api/v1/factchecks`, `GET /api/v1/factchecks/{slug}`, version history, `GET /api/v1/topics` (`backend/app/api/routes/public_*.py`) |
+| Claim submission | `POST /api/v1/submissions` → 202 + receipt id (`submissions.py`, `intake.py`) |
+
+Public HTML can be served from Cloudflare Pages (with `frontend/functions/` for sitemap/meta) or any static host; `vercel.json` documents an alternate **Vite + FastAPI** monorepo layout for Vercel-style hosting.
+
+### Editorial workspace (staff session)
+
+| What | Where |
+| --- | --- |
+| Sign-in / invite activation | `/login`, `/activate` (outside locale prefixes) |
+| Dashboard shell | `/editorial/*` with `EditorialLayout` and role gates (`RequireRole`) |
+| Inbox & triage | `InboxPage`, `SubmissionPage` → `/api/v1/editorial/submissions*` |
+| Investigations (sources, evidence, archive uploads) | `InvestigationPage` → `/api/v1/investigations*` |
+| Fact-check drafting & workflow | `FactCheckPage`, `LanguagePage` → `/api/v1/editorial/factchecks/.../languages/{lang}/*` |
+| Approver queue | `ApprovalQueuePage` → `GET /api/v1/editorial/approval-queue` (items where this user is the **selected approver**) |
+| Editor publish queue | `PublishQueuePage` at `/editorial/ready-to-publish` → `GET /api/v1/editorial/publish-queue` (approved items this editor marked ready) |
+| Archive, topics, admin users | `ArchivePage`, `TopicsAdminPage`, `AdminUsersPage` |
+
+### Backend shape
+
+```
+backend/app/
+  main.py          # FastAPI app, middleware, router mounting
+  api/routes/      # HTTP surface (one module per area)
+  core/            # config, policy, permissions, security
+  workflow/        # state machine, guards, readiness
+  services/        # business logic (intake, drafts, reviews, publication, archive, …)
+  models/          # SQLAlchemy tables
+  schemas/         # Pydantic request/response models
+```
+
+Authorization is always two-layer: **role + route** (`permissions.py`, `access.py`) and **object-level** `can(user, action, obj)` plus SQL scoping in `policy.py`. Denied access to an existing id returns **404**.
+
+### Typical data path (one language of one fact-check)
+
+1. Anonymous submission creates `submissions` (+ optional `submission_contacts`).
+2. Staff triage may open an `investigations` row with a required `owner_user_id` (active researcher).
+3. Investigation work produces `sources`, `evidence_items`, optional `archive_documents`.
+4. `POST .../investigations/{id}/factcheck` creates `fact_checks` and per-language `fact_check_contents`.
+5. Draft revisions → submit for review → editor **mark ready** (body includes `approver_id`, stored on `reviews.selected_approver_id`).
+6. Only that **designated approver** approves; only the **marking editor** publishes (`factcheck_handoff.py`, `guards.py`).
+7. Publish writes immutable `article_versions` and updates `public_articles` for search/list.
+
+Manual walkthrough with test accounts: [workflow-testing.md](workflow-testing.md). E2E seed: `backend/scripts/seed_e2e.py` (documented in README).
 
 ---
 
@@ -76,7 +134,7 @@ There are no public reader accounts (`/register` is not found in the frontend).
 - `platform_administrator` — invites, disable users, role assignment
 - `researcher` — triage, assigned investigations, drafting (with assignment)
 - `editor` — full investigations, contact view (audited), archive reclassification, topics
-- `approver` — approval queue, approve/publish/withdraw (read-only on unassigned investigations except queue visibility rules)
+- `approver` — approval queue (items where they are the **selected approver**), approve with independence guards; publish/withdraw require the `editor` role at policy layer
 
 Users may hold multiple roles; workflow guards enforce separation of duties per language cycle ([editorial-policy.md](editorial-policy.md)).
 
@@ -97,7 +155,9 @@ Users may hold multiple roles; workflow guards enforce separation of duties per 
 | Archive restricted | With `AccessGrant` | With grant; may grant if editor holds grant | With grant | No |
 | Draft edit / submit review | Assigned write | Assigned write | No (view via assignment or queue) | No |
 | Mark ready / review comment | No | Yes (on visible FC) | Request changes on visible FC | No |
-| Approve / publish / withdraw | No | No | Yes (independence guards) | No |
+| Approve | No | No | Yes (must be **selected approver** for that revision) | No |
+| Publish / correction / withdraw | No | Yes (policy role; **publish** also requires being the marking editor) | No (approve only unless they also hold `editor`) | No |
+| Publish queue (`/editorial/ready-to-publish`) | No | Yes (approved items this editor marked ready) | No | No |
 | Topic manage | No | Yes | No | No |
 | Staff directory | Yes | Yes | No | No |
 | Audit log | No | Yes | Yes | No |
@@ -120,7 +180,7 @@ Full archive matrix: [access-policy.md](access-policy.md).
 | FR-ED-1 | Submission inbox and triage | `editorial_intake` routes, workflow on submissions |
 | FR-ED-2 | Investigation workspace | Sources, evidence, assignments, status transitions |
 | FR-ED-3 | Fact-check drafting (per language) | Editorial fact-check routes, Markdown preview/sanitize |
-| FR-ED-4 | Review and approval | Reviews service, approval queue, readiness checks |
+| FR-ED-4 | Review and approval | Reviews service, approval queue, **publish queue**, mark-ready with `approver_id`, readiness checks |
 | FR-ED-5 | Publish, correct, withdraw | `publication.py`, immutable `ArticleVersion` |
 | FR-ED-6 | Archive upload and grants | MinIO/S3 storage, presigned access links |
 | FR-SEC-1 | Invite-only staff auth | Auth routes, invites, bootstrap CLI |
@@ -140,9 +200,9 @@ stateDiagram-v2
     Drafting --> InReview: Submit for review
     InReview --> ChangesRequested: Request changes
     ChangesRequested --> Drafting: Revise
-    InReview --> ReadyForApproval: Mark ready
-    ReadyForApproval --> Approved: Approver approves
-    Approved --> Published: Approver publishes
+    InReview --> ReadyForApproval: Editor marks ready (names approver)
+    ReadyForApproval --> Approved: Designated approver approves
+    Approved --> Published: Marking editor publishes
     Published --> Withdrawn: Withdraw
     Published --> Drafting: Correction cycle
 ```
@@ -154,7 +214,9 @@ Language content uses parallel `LanguageEditorialStatus` states managed by `back
 - Snapshots: JSON in `article_versions` with checksum verification on public read (`verify_snapshot_checksum`)
 - Public index: `public_articles` updated only inside publication transactions (publish, correction publish, withdraw)
 - Withdrawn articles: remain addressable with notice; excluded from list, search, topics, sitemap ([launch-decisions.md](launch-decisions.md), frontend `WithdrawnNotice`)
-- Independence: `backend/app/workflow/guards.py` — authors cannot approve; ready-marking editor cannot approve; only recorded approver may publish
+- Handoff metadata: `reviews.selected_approver_id` (migration `e1f2a3b4c5d6`); helpers in `backend/app/services/factcheck_handoff.py`
+- Independence: `backend/app/workflow/guards.py` — authors cannot approve; ready-marking editor cannot approve; only **designated approver** (`selected_approver_id`) may approve; only **marking editor** (mark-ready `reviewer_id`) may publish
+- Investigation ownership: opening an investigation from triage or creating one requires `owner_user_id` pointing at an active **researcher** (`intake.py`, `investigations.py`)
 
 ### 4.4 Intake and abuse controls
 
@@ -240,6 +302,7 @@ Local development: Docker Compose (`compose.yaml`) runs PostgreSQL, API, MinIO, 
 | Password hashing | argon2-cffi | Dependency in `pyproject.toml` |
 | Object storage | boto3 S3 API | `app/storage/s3.py`; MinIO locally |
 | Frontend | React 19, TypeScript, Vite 6 | `frontend/package.json` |
+| Styling / UI | Tailwind CSS 4, Radix slot, shadcn-style components | `components.json`, `frontend/src/components/ui/` |
 | Routing | react-router-dom v7 | Locale and editorial route trees |
 | Data fetching | TanStack React Query | Editorial/public queries |
 | HTML safety | DOMPurify, nh3 (backend Markdown) | XSS reduction |
@@ -264,8 +327,9 @@ Local development: Docker Compose (`compose.yaml`) runs PostgreSQL, API, MinIO, 
 | `app/workflow/` | Transitions, guards, engine, HTTP error mapping |
 | `app/services/intake.py` | Public submission and editorial triage |
 | `app/services/drafts.py` | Draft CRUD, revisions, optimistic concurrency |
-| `app/services/reviews.py` | Review steps, approval queue |
-| `app/services/publication.py` | Snapshots, publish, withdraw, public index writes |
+| `app/services/reviews.py` | Review steps, mark-ready with approver, approval + publish queues |
+| `app/services/factcheck_handoff.py` | Mark-ready review lookup; marking editor + designated approver ids |
+| `app/services/publication.py` | Snapshots, publish (marking editor), withdraw, public index writes |
 | `app/services/public_search.py` | Keyset list/search over `public_articles` |
 | `app/services/archive.py` | Uploads, classification, grants, presigned URLs |
 | `app/services/audit.py` | Append-only audit with payload sanitization |
@@ -281,13 +345,15 @@ Local development: Docker Compose (`compose.yaml`) runs PostgreSQL, API, MinIO, 
 | `src/routes.tsx` | Public locale routes + editorial nested routes with `RequireAuth` / `RequireRole` |
 | `src/api/client.ts` | Credentials, CSRF header, retry on stale CSRF |
 | `src/auth/` | Session bootstrap, login, activate |
-| `src/editorial/` | Full dashboard pages (inbox, investigations, fact-checks, archive, admin) |
+| `src/editorial/` | Dashboard pages (inbox, investigations, fact-checks, approvals, **ready-to-publish**, archive, admin) |
 | `src/i18n/` | Custom i18n for `en` and `bo` (no i18n framework) |
 | `functions/` | Cloudflare Pages Functions: meta tags, sitemap, robots, middleware |
 
 ### 8.3 Edge functions (Cloudflare)
 
 `frontend/wrangler.toml` documents Pages output dir `dist`, example `API_BASE_URL` and `SITE_ORIGIN`. Functions fetch public API metadata for HTML injection ([hosting.md](hosting.md)).
+
+`vercel.json` at the repo root describes a dual-service layout: API rewrites to the FastAPI app and all other paths to the Vite SPA build, with CSP/security headers aligned to `frontend/public/_headers`.
 
 ---
 
@@ -319,7 +385,8 @@ Base path: `/api/v1`. OpenAPI at `/openapi.json` when `ENVIRONMENT != production
 | GET | `/api/v1/topics/{slug}` | None | Topic detail + articles |
 | GET | `/api/v1/editorial/status` | Staff | Protection probe |
 | GET | `/api/v1/editorial/staff` | Policy | Assignable staff directory |
-| GET | `/api/v1/editorial/approval-queue` | Approver | Queue |
+| GET | `/api/v1/editorial/approval-queue` | Approver | Queue (languages ready for approval where user is selected approver) |
+| GET | `/api/v1/editorial/publish-queue` | Editor | Approved languages this user marked ready |
 | GET | `/api/v1/editorial/audit` | Editor/approver | Audit events |
 | GET/PATCH | `/api/v1/editorial/submissions...` | Policy | Inbox |
 | GET | `/api/v1/editorial/submissions/{id}/contact` | Editor | Contact (audited) |
@@ -374,6 +441,21 @@ Content-Type: application/json
 
 Response sets `tvn_session` cookie and JSON `{ "csrf_token": "..." }`.
 
+**Mark ready (designated approver)**
+
+```http
+POST /api/v1/editorial/factchecks/{id}/languages/en/mark-ready HTTP/1.1
+Content-Type: application/json
+X-CSRF-Token: ...
+
+{
+  "expected_revision": 3,
+  "approver_id": "<uuid of active user with approver role>"
+}
+```
+
+The selected approver must not be the marking editor or an author of the current publication cycle. Approval and publish actions enforce the stored handoff via workflow guards.
+
 **Public fact-check list**
 
 ```http
@@ -422,6 +504,9 @@ Extended narrative: [data-model.md](data-model.md).
 | `b7c8d9e0f1a2` | Phase 3.1 workflow schema |
 | `c9d0e1f2a3b4` | Pending version kind |
 | `d0e1f2a3b4c5` | Topics + `public_articles` |
+| `e1f2a3b4c5d6` | `reviews.selected_approver_id` for mark-ready handoff |
+
+Operational backfill for in-flight reviews: `backend/scripts/backfill_selected_approvers.py`.
 
 ### 10.3 Key tables (supplement)
 
@@ -432,6 +517,7 @@ Extended narrative: [data-model.md](data-model.md).
 | `fact_check_content_revisions` | Material edits; feeds authorship guards |
 | `rate_limit_buckets` | Postgres counters for submission abuse |
 | `topics` | Bilingual names; deactivated, not deleted |
+| `reviews` | Decisions (`MARK_READY`, `APPROVE`, …); `selected_approver_id` on active mark-ready rows |
 
 ---
 
@@ -480,7 +566,7 @@ Extended narrative: [data-model.md](data-model.md).
 
 ### 13.1 AWS / Azure
 
-**OPEN QUESTION:** This repository contains **no** Terraform, CloudFormation, ARM templates, or AWS/Azure-specific deployment manifests. Production guidance is provider-agnostic ([hosting.md](hosting.md)).
+There is **no** checked-in Terraform, CloudFormation, or ARM templates. Provider-agnostic production env rules remain in [hosting.md](hosting.md). **[aws-deployment.md](aws-deployment.md)** documents a concrete EC2 / RDS / S3 lab deployment path for pilots (cost guardrails, Compose-on-EC2 vs RDS). **Azure** remains undocumented in-repo.
 
 ### 13.2 Documented candidate managed stack (planning artifact)
 
@@ -577,7 +663,7 @@ Local and CI entrypoints: `make test`, `make lint`, `docs/testing.md`.
 | 1 | Foundation, schema, auth, CI | Implemented |
 | 2 | Intake, investigations, archive, policy | Implemented |
 | 3 | Workflow, publication snapshots, audit | Implemented (tests + services present) |
-| 4 | Public site, search, editorial UI, e2e, hosting docs | Largely implemented; deploy automation open |
+| 4 | Public site, search, editorial UI, e2e, hosting docs | Largely implemented; editor-led handoff + publish queue shipped; deploy automation open |
 | 5 | AI assistance, launch hardening | **Not implemented** (schema only for `research_runs`) |
 
 **Note:** YAML todo statuses inside plan files may lag the codebase; feature presence above is inferred from routes, frontend pages, and CI.
@@ -605,7 +691,7 @@ Local and CI entrypoints: `make test`, `make lint`, `docs/testing.md`.
 - Contact-data retention period
 - Antivirus scanning for archive uploads
 - Public API payload trimming for withdrawn articles (defense in depth)
-- Approver-unavailable fallback
+- Fallback when the selected approver is unavailable (partially addressed by mark-ready re-run / reopen flows; no auto-reassignment in code)
 - Attribution style (named staff vs team byline)
 - AI provider, cost caps, and data handling for Phase 5
 - Numeric SLOs, metrics, and on-call alerting
@@ -626,3 +712,6 @@ Key environment variables are documented in `.env.example` and validated in `Set
 | [data-model.md](data-model.md) | Tables and privacy boundaries |
 | [local-development.md](local-development.md) | Compose, migrations, e2e |
 | [Tibetan_FactCheck_PRD_and_Design.md](Tibetan_FactCheck_PRD_and_Design.md) | Product requirements |
+| [workflow-testing.md](workflow-testing.md) | Manual end-to-end claim walkthrough |
+| [aws-deployment.md](aws-deployment.md) | AWS pilot / EC2 deployment guide |
+| [AI-layer.md](AI-layer.md) | Phase 5 AI roadmap (not implemented in app code) |
